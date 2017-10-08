@@ -24,7 +24,7 @@ class AFMLine:
 
     # physics stuff
     wbias   = .01      # writing bias, eV
-    wsig    = 2         # writing bias width, angstroms
+    wsig    = 2.         # writing bias width, angstroms
 
     def __init__(self, X):
         '''Contruct an AFM for a wire with the given db sites in lattice units'''
@@ -176,9 +176,10 @@ class AFMLine:
 
 if __name__ == '__main__':
 
-    X = [1, 8, 10, 15, 17, 24]
+    #X = [1, 8, 10, 15, 17, 24]
+    X = [1, 12, 15, 22, 25]
 
     afm = AFMLine(X)
-    afm.setScanType(0)
-    #afm.setBias(.0001)
+    afm.setScanType(1)
+    afm.setBias(.00012)
     afm.run(Nel=3, nscans=200, pad=[3,3])
