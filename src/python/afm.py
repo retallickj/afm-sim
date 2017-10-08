@@ -145,13 +145,13 @@ class AFMLine:
     def plotImage(self):
         '''Make an image showing the charge configuration for all line scans'''
 
-        nx = 200
+        nx = 400
         x = np.linspace(np.min(X)-self.pad[0], np.max(self.X)+self.pad[1], nx)
 
         dx = (np.max(x)-np.min(x))/(nx-1)
-        sig = 1.5
+        sig = 1.
 
-        kernel = np.sqrt(np.exp(-.5*np.linspace(-2,2.,1+int(sig/dx))**2))
+        kernel = np.exp(-.2*np.linspace(-2,2.,1+int(sig/dx))**2)
 
         inds = np.round(nx*(self.X-np.min(x))/(np.max(x)-np.min(x))).astype(int)
         data = np.zeros([self.nscans, nx], dtype=float)
@@ -176,9 +176,9 @@ class AFMLine:
 
 if __name__ == '__main__':
 
-    X = [1, 8, 10, 15, 17, 22, 24, 29, 31, 36, 38, 45]
+    X = [1, 8, 10, 15, 17, 24]
 
     afm = AFMLine(X)
     afm.setScanType(0)
     #afm.setBias(.0001)
-    afm.run(Nel=6, nscans=200, pad=[3,3])
+    afm.run(Nel=3, nscans=200, pad=[3,3])
