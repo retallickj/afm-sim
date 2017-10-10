@@ -146,7 +146,7 @@ class AFMLine:
         '''Make an image showing the charge configuration for all line scans'''
 
         nx = 400
-        x = np.linspace(np.min(X)-self.pad[0], np.max(self.X)+self.pad[1], nx)
+        x = np.linspace(np.min(self.X)-self.pad[0], np.max(self.X)+self.pad[1], nx)
 
         dx = (np.max(x)-np.min(x))/(nx-1)
         sig = 1.
@@ -180,6 +180,6 @@ if __name__ == '__main__':
     X = [1, 12, 15, 22, 25]
 
     afm = AFMLine(X)
-    afm.setScanType(1)
+    afm.setScanType(-1, -.01)
     afm.setBias(.00012)
     afm.run(Nel=3, nscans=200, pad=[3,3])

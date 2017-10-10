@@ -21,8 +21,8 @@ class MarcusModel:
     debye   = 50            # debye screening length, angstroms
     lamb    = 0.04           # reorganization energy, eV
     t0      = 1e-2          # staying integral, eV
-    t1      = 1e-3          # tunneling integral at lattice vector a, eV
-    tpow    = 2             # tunneling integral distance fall-off power
+    t1      = 5e-4          # tunneling integral at lattice vector a, eV
+    tpow    = 1             # tunneling integral distance fall-off power
 
     # lattice parameters
     a = 3.84    # lattice vector in x, angstroms    (intra dimer row)
