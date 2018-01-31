@@ -4,6 +4,6 @@
     <version>0.1</version>
     <bin_path>python ./src/python/demo.py</bin_path> <!-- relative to engine_description.xml -->
     <sim_params>
-        <param object_type="QLineEdit" default_text="this is a test">le_testtext</param>
+        <param gui_object_type="QLineEdit" gui_object_name="le_testtext">testtext</param>
     </sim_params>
 </physeng>
