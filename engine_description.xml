@@ -2,7 +2,8 @@
 <physeng>
     <name>AFMMarcus</name>
     <version>0.1</version>
-    <bin_path>python ./src/python/demo.py</bin_path> <!-- relative to engine_description.xml -->
+    <interpreter>python</interpreter> <!-- used for calling a script with python, java, etc. Leave blank otherwise -->
+    <bin_path>src/python/demo.py</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
     <sim_params>
         <param gui_object_type="QLineEdit" gui_object_name="le_testtext">testtext</param>
     </sim_params>
