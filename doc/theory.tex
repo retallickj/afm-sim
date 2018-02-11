@@ -122,6 +122,14 @@ The tip induces an effective change in the local potentials at each site. This p
 \end{equation}
 where $\vec{U}' = \vec{U}(\vec{n}')$ is the vector of local potentials after the hop, and $\Delta \vec{U} = \vec{U}' - \vec{U}$. For every $i$ and $j$ there is new $\vec{U}'$ and so we can't do any additional tricks without more information.
 
+\subsection{Population}
+
+The current implementation of the Marcus simulator fixes the number of electrons. Nothing regarding the Fermi level is considered. One simple approach which could be easily implemented is to add an additional hopping channel to/from a reservoir. The effective potential experience at each DB is given as
+\begin{equation}
+\vec{U}_{eff} = \vec{U} - V \vec{n}
+\end{equation}
+This is of course equal to $\vec{\epsilon}$ from before. This is a measure of the absolute energy of the bound state of each well. There is a tranfer rate from all charge to the reservoid and from the reservoir to all empty DBs. This rate is a function of $\vec{U}_{eff}$. It is just a matter of finding the right parameters to match experiment.
+
 
 
 
