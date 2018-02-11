@@ -80,7 +80,7 @@ For a given hopping rate $\nu$, we should expect a hop to occur after $\expect{\
  \item a hop is attempted after some $\tau$ seconds with $P(\tau \leq t) = 1-e^{-\nu t}$.
  \item a hop is attempted after some $\tau_0$ "ticks" with $P(\tau_0 \leq t) = 1-e^{-t}$ and a "tick rate" of $\nu$ ticks per second.
 \end{enumerate}
-This tick rate picture is convenient as it naturally leads to the behaviour for an electron among multiple DBs. Each possible hopping destination contributes $\nu_{ij}$ to the rate at which the electron "leaks" out of its current DB. Therefore, a hop occurs after $\tau_0$ ticks with the tick rate given as $\nu_i = \sum_j \nu_{ij}$. Further, the $\nu_{ij}$ can be time varying without any challenge (see Appendix \ref{app:tickrate}).
+This tick rate picture is convenient as it naturally leads to the behaviour for an electron among multiple DBs. Each possible hopping destination contributes $\nu_{ij}$ to the rate at which the electron "leaks" out of its current DB. Therefore, a hop occurs after $\tau_0$ ticks with the tick rate given as $\nu_i = \sum_j \nu_{ij}$. Further, the $\nu_{ij}$ can be time varying without any challenge (see Appendix \ref{app:tickrate}). We refer to $\tau_0$ as the \emph{lifetime} of a charge.
 
 \subsection{Marcus-Boltzmann Distribution}
 
@@ -88,10 +88,16 @@ After $\tau$ seconds, an electron hops from site $i$ to some target $j$. The pro
 \begin{equation}
 p_{ij} = \alpha \nu_{ij} = \frac{\nu_{ij}}{\sum_k \nu_{ik}}
 \end{equation}
-The form of this distribution has similar properties to the Boltzmann distribution. Namely, the hopping probability is highly affected by the resulting change in energy. For that reason, this distribution will be referred to as the Marcus Boltzmann distribution:
+The form of this distribution has similar properties to the Boltzmann distribution. Namely, the hopping probability is highly affected by the resulting change in energy. For that reason, this distribution will be referred to as the Marcus-Boltzmann distribution:
 \[
 p_{ij} = \frac{|t_{ij}|^2 e^{-\frac{(\Delta E_{ij}+\lambda)^2}{4\lambda \kt}}}{\sum_k |t_{ik}|^2 e^{-\frac{(\Delta E_{ik}+\lambda)^2}{4\lambda \kt}}}
 \]
+
+\emph{Question: is this necessarily true? For time varying $\nu_{ij}$ it might make more sense that the probability be something more like}
+\[
+p_{ij} = \frac{\int_0^\tau \nu_{ij}(t) dt}{\sum_k \int_0^\tau \nu_{ik}(t) dt}
+\]
+\emph{as this would give the weighted accumulated charge leakage to each possible hopping target rather than using only the instantaneous rates. However, this might result in charges hopping to sites which recently became unfavourable due to other hopping events. Also there are issues: what if most of the charge leakage (consumption of $\tau_0$) was to a DB which was later occupied and hence no longer available? }
 
 \section{Numerical Details}
 
@@ -107,7 +113,7 @@ If we define $\vec{\epsilon} = \vec{U} - V\vec{n}$, we obtain the convenient exp
 \begin{equation}
 \Delta E = \hat{\epsilon} \otimes \One^T - \One \otimes \hat{\epsilon}^T - V
 \end{equation}
-where $\Delta E$ is the matrix of all possible energy changes for the current charge state. Note that either Python or MATLAB will do the broadcasting for free so this is simply $\Delta E = \vec{\epsilon} - \vec{\epsilon}^T - V$.
+where $\Delta E$ is the matrix of all possible energy changes for the current charge state. Note that either Python or MATLAB will do the broadcasting for free so this is simply $\Delta E = \vec{\epsilon} - \vec{\epsilon}^T - V$. One important efficiency note here is that for a charge state with $N$ electrons among $M$ DBs, there are only $N$ rows (hopping sources) and $M-N$ columns (hopping targets) that are relevant to the calculations. If we slice $\vec{\epsilon}$ and $V$ appropriately, we only ever have to deal with a $\Delta E$ of size $N \times (M-N)$.
 
 
 
@@ -116,19 +122,19 @@ where $\Delta E$ is the matrix of all possible energy changes for the current ch
 
 \subsection{Tip Model}
 
-The tip induces an effective change in the local potentials at each site. This potential is a function of the current charge configuration and so cannot simply be considered an additional term to $\vec{U}$ like other external fields. There is no real obstacle to simply including another term to $\vec{U}$. We can generalise the $\Delta E_{ij}$ equation as follows:
+The tip induces an effective change in the local potentials at each site. This potential is a function of the current charge configuration and so cannot simply be considered an additional term in $\vec{U}$ like other external fields. There is no real obstacle to simply extending the interpretation of $\vec{U}$. We can generalise the $\Delta E_{ij}$ equation as follows:
 \begin{equation}
 \Delta E_{ij} = -[\vec{U}' -V\vec{n}]^T \delta \vec{n} - V_{ij} - \Delta \vec{U}^T \vec{n}
 \end{equation}
-where $\vec{U}' = \vec{U}(\vec{n}')$ is the vector of local potentials after the hop, and $\Delta \vec{U} = \vec{U}' - \vec{U}$. For every $i$ and $j$ there is new $\vec{U}'$ and so we can't do any additional tricks without more information.
+where $\vec{U}' = \vec{U}(\vec{n}')$ is the vector of local potentials after the hop, and $\Delta \vec{U} = \vec{U}' - \vec{U}$. For every $i$ and $j$ there is new $\vec{U}'$ and so we can't do any additional tricks without more information: i.e. how much can the tip model be parametrized, how many states do we expect to see near equilibrium (store tip influence for each state in a look-up table), etc.
 
 \subsection{Population}
 
-The current implementation of the Marcus simulator fixes the number of electrons. Nothing regarding the Fermi level is considered. One simple approach which could be easily implemented is to add an additional hopping channel to/from a reservoir. The effective potential experience at each DB is given as
+The current implementation of the Marcus simulator fixes the number of electrons. Nothing regarding the Fermi level is considered. One simple approach which could be easily implemented is to add an additional hopping channel to/from a reservoir. The effective potential experiencde at each DB is given as
 \begin{equation}
 \vec{U}_{eff} = \vec{U} - V \vec{n}
 \end{equation}
-This is of course equal to $\vec{\epsilon}$ from before. This is a measure of the absolute energy of the bound state of each well. There is a tranfer rate from all charge to the reservoid and from the reservoir to all empty DBs. This rate is a function of $\vec{U}_{eff}$. It is just a matter of finding the right parameters to match experiment.
+This is of course equal to $\vec{\epsilon}$ from before. This is a measure of the absolute energy of the bound state of each well. There is a tranfer rate from all occupied DBs \textbf{to} the reservoir and \textbf{from} the reservoir to all empty DBs. This rate is a function of $\vec{U}_{eff}$. It is just a matter of finding the right parameters to match experiment.
 
 
 
