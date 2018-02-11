@@ -69,7 +69,7 @@ Each of the DBs is identical so the change in Gibbs free energy arises only from
 \begin{equation}
 E(\vec{n}) = -\sum_i U_i n_i + \frac{1}{2} \sum_{<i,j>} V_{ij}n_in_j = -\vec{U}^T\vec{n} + \frac{1}{2}\vec{n}^T V \vec{n}
 \end{equation}
-where $n_i$ is the number of electrons at the $i^{th}$ site, $U_i$ is the local potential due to external fields such as those from thetip, and $V_{ij}$ is the strength of the Coulombic interaction between each site. We approximate any potential Debye screening by using an interaction of the form
+where $n_i$ is the number of electrons at the $i^{th}$ site, $U_i$ is the local potential due to external fields such as those from the tip, and $V_{ij}$ is the strength of the Coulombic interaction between each site. We approximate any potential Debye screening by using an interaction of the form
 \begin{equation}
 V_{ij} = \frac{q}{4\pi\epsilon r_{ij}}e^{\sfrac{-r_{ij}}{\lambda_D}}
 \end{equation}
@@ -132,11 +132,11 @@ where $\vec{U}' = \vec{U}(\vec{n}')$ is the vector of local potentials after the
 
 \subsection{Population}
 
-The current implementation of the Marcus simulator fixes the number of electrons. Nothing regarding the Fermi level is considered. One simple approach which could be easily implemented is to add an additional hopping channel to/from a reservoir. The effective potential experiencde at each DB is given as
+The current implementation of the Marcus simulator fixes the number of electrons. Nothing regarding the Fermi level is considered. One simple approach which could be easily implemented is to add an additional hopping channel to/from a reservoir. The effective potential experienced at each DB is given as
 \begin{equation}
 \vec{U}_{eff} = \vec{U} - V \vec{n}
 \end{equation}
-This is of course equal to $\vec{\epsilon}$ from before. This is a measure of the absolute energy of the bound state of each well. There is a tranfer rate from all occupied DBs \textbf{to} the reservoir and \textbf{from} the reservoir to all empty DBs. This rate is a function of $\vec{U}_{eff}$. It is just a matter of finding the right parameters to match experiment.
+This is of course equal to $\vec{\epsilon}$ from before. This is a measure of the absolute energy of the bound state of each well. There is a transfer rate from all occupied DBs \textbf{to} the reservoir and \textbf{from} the reservoir to all empty DBs. This rate is a function of $\vec{U}_{eff}$. It is just a matter of finding the right parameters to match experiment.
 
 
 
@@ -149,7 +149,7 @@ This is of course equal to $\vec{\epsilon}$ from before. This is a measure of th
 \section{Validation of the Tick-Rate Interpretation}
 \label{app:tickrate}
 
-Given some time varying transfer rate $\nu(t)$, the probability of a hopping event occuring in some small time dt is given by 
+Given some time varying transfer rate $\nu(t)$, the probability of a hopping event occurring in some small time dt is given by 
 \begin{equation}
 p(t) = \nu(t) dt.
 \end{equation}
@@ -161,7 +161,7 @@ Suppose we generate some exponential random variable $\tau_0$ according to
 \begin{equation}
 P(\tau_0 \leq t) = 1-e^{-t}
 \end{equation}
-and at each instant in time, we decrement $\tau_0$ by $\nu(t)dt$. The time, $\tau$, until $\tau_0$ is depleted is given implicitely as
+and at each instant in time, we decrement $\tau_0$ by $\nu(t)dt$. The time, $\tau$, until $\tau_0$ is depleted is given implicitly as
 \begin{equation}
 \tau_0 = \int_0^\tau \nu(t) dt.
 \end{equation}
