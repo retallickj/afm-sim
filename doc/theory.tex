@@ -10,6 +10,8 @@
 \graphicspath{{./img/}}
 \DeclareGraphicsExtensions{.pdf}
 
+\newcommand{\bibfile}{refs.bib}
+
 \newcommand{\kt}{k_B T}
 \newcommand{\expect}[1]{\langle #1 \rangle}
 \newcommand{\One}{\hat{1}}
@@ -30,7 +32,7 @@ where $t_{if}$ is the transfer integral and $S_j = \sfrac{\lambda_j}{\hbar\omega
 \begin{equation}
 \nu_{if} = \frac{|t_{if}|^2}{\hbar^2} \sqrt{\frac{2\pi}{\sum_j S_j \omega_j^2(2n_j+1)}} e^{-\frac{(\omega_{if}+\sum_j S_j \omega_j)^2}{2\sum_j S_j\omega_j^2(2n_j+1)}}.
 \end{equation}
-In the high-temperature limit, this reduces to the Marcus hopping rate equation:
+In the high-temperature limit, this reduces to the Marcus hopping rate equation \cite{marcus93}:
 \begin{equation}
 \nu_{if} = \frac{|t_{if}|^2}{\hbar} \sqrt{\frac{\pi}{\lambda \kt}} \: e^{-\frac{(\Delta G_{if}+\lambda)^2}{4\lambda \kt}},
 \end{equation}
@@ -185,5 +187,7 @@ So $\tau$ has exactly the correct statistics. Note that on generating $\tau_0$ w
 %Hence, equilibrium flow of charge is governed by Gibbs factor weighted rates.
 
 
+\bibliographystyle{ieeetr}
+\bibliography{\bibfile}
 
 \end{document}
