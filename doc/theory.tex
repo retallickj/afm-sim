@@ -7,6 +7,11 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 
+\setlength{\parindent}{0pt}
+
+
+
+
 \graphicspath{{./img/}}
 \DeclareGraphicsExtensions{.pdf}
 
@@ -75,6 +80,22 @@ V_{ij} = \frac{q}{4\pi\epsilon r_{ij}}e^{\sfrac{-r_{ij}}{\lambda_D}}
 \end{equation}
 with $r_{ij}$ the distance between DBs and $\lambda_D$ the Debye length.
 
+
+\subsection{Nature of the Hopping}
+
+\begin{figure}[h!]
+\centering
+ \includegraphics[width=.8\textwidth]{nu-v-dE}
+ \caption{Tunneling rate as a function of the energy difference. The rate is highest when the decrease in energy is close to the reorganization energy. This corresponds to a resonance between the self-trapped state of an occupied DB and the available state of an unoccupied DB. The effect of temperature is to broaden this resonance.}
+ \label{fig:nu-v-dE}
+\end{figure}
+Recall the expression for the tunneling rates:
+\[
+\nu_{ij} = \frac{|t_{ij}|^2}{\hbar} \sqrt{\frac{\pi}{\lambda \kt}} e^{-\frac{(\Delta E_{ij} + \lambda)^2}{4\lambda \kt}}.
+\]
+The form of this tunneling is shown in Fig. \ref{fig:nu-v-dE}. As in resonant tunneling processes, the tunneling rate is maximized when the self-trapped energy level of the bound electron of a DB is in resonance with the energy of the unoccupied DB state. As is typical, the effect of temperature is to broaden the resonance peak. The integral of tunneling rates over all energy channels must be consistent with the coherent tunneling picture ($\int_{-\infty}^\infty \nu_{ij} d\Delta E_{ij} = 2\pi \sfrac{|t_{ij}|^2}{\hbar}$) so the higher the temperature, the broader the curve, and the lower the maximum tunneling rate. Note that lower energy states are only accessible if they can be reached through hopping events with decreases in energy within approximately $2\sqrt{\lambda \kt}$ of $\lambda$. This is fundamentally due to the fact that the charge state of the system can only decrease in energy if that energy is absorbed elsewhere. In the Marcus picture, the only available energy source/drain is through electron-phonon interactions. 
+
+
 \subsection{Hopping Intervals}
 
 For a given hopping rate $\nu$, we should expect a hop to occur after $\expect{\tau} = \nu^{-1}$ seconds, where $\tau$ is the hopping interval. If $\nu$ is fixed, $\tau$ is an exponential random variable with probability $P(\tau \leq t) = 1-e^{-\nu t}$. We can interpret the transfer dynamics in two ways:
@@ -83,6 +104,8 @@ For a given hopping rate $\nu$, we should expect a hop to occur after $\expect{\
  \item a hop is attempted after some $\tau_0$ "ticks" with $P(\tau_0 \leq t) = 1-e^{-t}$ and a "tick rate" of $\nu$ ticks per second.
 \end{enumerate}
 This tick rate picture is convenient as it naturally leads to the behaviour for an electron among multiple DBs. Each possible hopping destination contributes $\nu_{ij}$ to the rate at which the electron "leaks" out of its current DB. Therefore, a hop occurs after $\tau_0$ ticks with the tick rate given as $\nu_i = \sum_j \nu_{ij}$. Further, the $\nu_{ij}$ can be time varying without any challenge (see Appendix \ref{app:tickrate}). We refer to $\tau_0$ as the \emph{lifetime} of a charge.
+
+
 
 \subsection{Marcus-Boltzmann Distribution}
 
@@ -136,7 +159,7 @@ The current implementation of the Marcus simulator fixes the number of electrons
 \begin{equation}
 \vec{U}_{eff} = \vec{U} - V \vec{n}
 \end{equation}
-This is of course equal to $\vec{\epsilon}$ from before. This is a measure of the absolute energy of the bound state of each well. There is a transfer rate from all occupied DBs \textbf{to} the reservoir and \textbf{from} the reservoir to all empty DBs. This rate is a function of $\vec{U}_{eff}$. It is just a matter of finding the right parameters to match experiment.
+This is of course equal to $\vec{\epsilon}$ from before. This is a measure of the absolute energy of the bound state of each well. There are transfer rates from all occupied DBs \textbf{to} the reservoir as well as \textbf{from} the reservoir to all empty DBs. This rate is a function of $\vec{U}_{eff}$. It is just a matter of finding the right parameters to match experiment.
 
 
 
@@ -185,6 +208,8 @@ So $\tau$ has exactly the correct statistics. Note that on generating $\tau_0$ w
 %\end{equation}
 %where we have only assumed that $|t_{ij}| = |t_{ji}|$. 
 %Hence, equilibrium flow of charge is governed by Gibbs factor weighted rates.
+
+
 
 
 \bibliographystyle{ieeetr}
