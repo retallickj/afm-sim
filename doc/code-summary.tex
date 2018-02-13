@@ -78,7 +78,7 @@ Marcus theory models the rate of thermally assisted adiabatic electron transfers
   \label{eq:marcus-tunneling-rate}
 \end{equation}
 
-Where $t_{i f}$ is the tunneling term (overlap of wavefunctions); $\lambda$ is the self-trapping energy; $\Delta G_{i f}$ is the energy difference between the configurations before and after electron exchange. 
+Where $t_{i f}$ is the tunneling term (overlap of wavefunctions); $\lambda$ is the self-trapping energy; $\Delta G_{i f}$ is the Coulombic energy difference between the configurations before and after electron exchange. 
 
 
 
@@ -90,7 +90,7 @@ Where $t_{i f}$ is the tunneling term (overlap of wavefunctions); $\lambda$ is t
 
 \subsection{Implementation}
 
-A tool for simulating AFM line scans has been implemented. Marcus theory has been used to approximate electron tunneling rates, where $\Delta G_{i f}$ is treated as the difference in Coulombic potential energy between the initial and final electron configurations. The simulator takes the position of dangling bonds, scan type (read or write) and other parameters to produce simulated line scan plots.
+A tool for simulating AFM line scans has been implemented. The simulator takes the position of dangling bonds, scan type (read or write) and other parameters to produce simulated line scan plots.
 
 The simulation engine consists of two classes:
 
@@ -99,7 +99,7 @@ The simulation engine consists of two classes:
   \item MarcusModel: This class is called by \textit{AFMLine} to generate the timing for electron tunneling events. Marcus theory is used to determine electron hopping rates between two sites, which is used to generate randomized timings for electron tunneling events from an exponential distribution. This class is also responsible for keeping track of electron count and position.
 \end{itemize}
 
-Currently, two items are still pending proper implementation: 1\. the current model of the AFM tip is a result of trial-and-error parameterization, Lucian's model should be able to fill this gap; 2\. the electron population count is determined by hand, an automated implementation is needed.
+Currently, two items are still pending proper implementation: 1. the current model of the AFM tip is a result of trial-and-error parameterization, Lucian's model should be able to fill this gap; 2. the electron population count is determined by hand, an automated implementation is needed.
 
 
 \subsection{Usage}
