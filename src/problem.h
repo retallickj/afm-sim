@@ -31,12 +31,6 @@ namespace phys{
     // Destructor
     ~Problem() {};
 
-    // File Handling
-    bool readProblem(const std::string &fname);
-
-    // Accessors
-    bool parameterExists(const std::string &key) {return sim_params.find(key) != sim_params.end();}
-    std::string getParameter(const std::string &key) {return sim_params.find(key) != sim_params.end() ? sim_params.at(key) : "";}
 
 
     // STRUCTS
@@ -65,6 +59,19 @@ namespace phys{
       float dx,dy;    // width and height in angstroms
       float z;        // vertical distance from surface
       float voltage;  // voltage that the electrode is set to
+    };
+
+    // afm node
+    struct AFMNode {
+      AFMNode(float in_x, float in_y, float in_z) : x(in_x), y(in_y), z(in_z) {};
+      float x,y; // physical location in angstroms
+      float z;
+    };
+    
+    // afm path
+    struct AFMPath {
+      std::vector<std::shared_ptr<AFMNode>> nodes;
+      float speed;
     };
 
 
@@ -102,6 +109,20 @@ namespace phys{
     DBIterator begin() {return DBIterator(db_tree);}
     DBIterator end() {return DBIterator(db_tree, false);}
 
+
+
+    // File Handling
+    bool readProblem(const std::string &fname);
+
+    // Accessors
+    bool parameterExists(const std::string &key) {return sim_params.find(key) != sim_params.end();}
+    std::string getParameter(const std::string &key) {return sim_params.find(key) != sim_params.end() ? sim_params.at(key) : "";}
+
+    int simulateAFMPathInd() {return sim_afm_path_ind;} // the AFM path to use for simulation
+    std::shared_ptr<AFMPath> getAFMPath(int path_ind) {return afm_paths.at(path_ind);}
+
+
+
   private:
     bool readProgramProp(const bpt::ptree &);
     bool readMaterialProp(const bpt::ptree &);
@@ -109,9 +130,14 @@ namespace phys{
     bool readDesign(const bpt::ptree &subtree, const std::shared_ptr<Aggregate> &agg_parent);
     bool readItemTree(const bpt::ptree &subtree, const std::shared_ptr<Aggregate> &agg_parent);
     bool readDBDot(const bpt::ptree &subtree, const std::shared_ptr<Aggregate> &agg_parent);
+    bool readAFMLayer(const bpt::ptree &subtree);
+    bool readAFMPath(const bpt::ptree &subtree);
+    bool readAFMNode(const bpt::ptree &subtree, const std::shared_ptr<AFMPath> &path_parent);
 
     // Variables
     std::shared_ptr<Aggregate> db_tree;
+    std::vector<std::shared_ptr<AFMPath>> afm_paths;
+    int sim_afm_path_ind=-1;
     std::map<std::string, std::string> program_props;
     // std::map<std::string, std::string> material_props; TODO probably need a different structure for this
     std::map<std::string, std::string> sim_params;

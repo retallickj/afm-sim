@@ -164,6 +164,9 @@ bool Problem::readDesign(const bpt::ptree &subtree, const std::shared_ptr<Aggreg
     } else if (!layer_type.compare("Electrode")) {
       // TODO parse electrode code
       std::cout << "TODO write code for parsing electrodes" << std::endl;
+    } else if (!layer_type.compare("AFMTip")) {
+      std::cout << "Encountered node " << layer_tree.first << " with type " << layer_type << ", entering" << std::endl;
+      readAFMLayer(layer_tree.second);
     } else {
       std::cout << "Encountered node " << layer_tree.first << " with type " << layer_type << ", no defined action for this layer. Skipping." << std::endl;
     }
@@ -205,5 +208,59 @@ bool Problem::readDBDot(const bpt::ptree &subtree, const std::shared_ptr<Aggrega
 
   std::cout << "DBDot created with x=" << agg_parent->dbs.back()->x << ", y=" << agg_parent->dbs.back()->y << ", elec=" << agg_parent->dbs.back()->elec << std::endl;
   
+  return true;
+}
+
+
+bool Problem::readAFMLayer(const bpt::ptree &subtree)
+{
+  for (bpt::ptree::value_type const &path_tree : subtree) {
+    std::string item_name = path_tree.first;
+
+    if (!item_name.compare("afmpath")) {
+      // create new AFMPath and add to afm_paths vector
+      readAFMPath(path_tree.second);
+    } else {
+      std::cout << "Encountered unknown item node: " << path_tree.first << std::endl;
+    }
+  }
+  return true;
+}
+
+
+bool Problem::readAFMPath(const bpt::ptree &subtree)
+{
+  float speed;
+
+  afm_paths.push_back(std::make_shared<AFMPath>());
+
+  // check if this path if the one used for simulation
+  if (subtree.get<bool>("<xmlattr>.use_for_sim"))
+    sim_afm_path_ind = afm_paths.size()-1;
+
+  // read x and y from XML stream
+  for (bpt::ptree::value_type const &path_tree : subtree) {
+    std::string item_name = path_tree.first;
+
+    if (!item_name.compare("afmnode")) {
+      // create new AFMNode and add to path
+      readAFMNode(path_tree.second, afm_paths.back());
+    }
+  }
+  return true;
+}
+
+
+bool Problem::readAFMNode(const bpt::ptree &subtree, const std::shared_ptr<AFMPath> &path_parent)
+{
+  float x, y, zoffset;
+
+  x = subtree.get<float>("physloc.<xmlattr>.x");
+  y = subtree.get<float>("physloc.<xmlattr>.y");
+  zoffset = subtree.get<float>("zoffset");
+
+  path_parent->nodes.push_back(std::make_shared<AFMNode>(x, y, zoffset));
+
+  std::cout << "AFMNode created with x=" << path_parent->nodes.back()->x << ", y=" << path_parent->nodes.back()->y << ", z=," << path_parent->nodes.back()->z << std::endl;
   return true;
 }

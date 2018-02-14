@@ -31,6 +31,10 @@ namespace phys {
     bool importResultFromScript(const std::string &script_result_path);
     
 
+    // VARS
+    std::vector<std::pair<int,int>> db_locs_lu;   // DB locations in lattice unit
+
+
   }; // end of AFMMarcus class
 
 } // end of phys namespace

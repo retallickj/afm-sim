@@ -11,14 +11,34 @@
 #include <iostream>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 using namespace phys;
 
 // CONSTRUCTOR
 PhysicsEngine::PhysicsEngine(const std::string &eng_nm, const std::string &i_path, const std::string &o_path, const std::string &script_path, const std::string &temp_path)
-  : eng_name(eng_nm), in_path(i_path), out_path(o_path), script_path(script_path), temp_path(temp_path)
+  : eng_name(eng_nm), script_path(script_path), in_path(i_path), out_path(o_path), temp_path(temp_path)
 {
   problem.readProblem(i_path);
+  readDBLocFromProblem();
+}
+
+void PhysicsEngine::readDBLocFromProblem()
+{
+  // grab all physical locations (in original distance unit)
+  std::cout << "Grab all physical locations..." << std::endl;
+  n_dbs = 0;
+  for (auto db : problem) {
+    if (db->elec != 1) {
+      db_locs.push_back(std::make_pair(db->x, db->y));
+      n_dbs++;
+      std::cout << "DB loc: x=" << db_locs.back().first
+          << ", y=" << db_locs.back().second << std::endl;
+    } else {
+      fixed_charges.push_back(std::make_tuple(db->x, db->y, db->elec));
+    }
+  }
+  std::cout << "Free dbs, n_dbs=" << n_dbs << std::endl << std::endl;
 }
 
 void PhysicsEngine::writeResultsXml()
@@ -71,4 +91,15 @@ void PhysicsEngine::writeResultsXml()
   bpt::write_xml(out_path, tree, std::locale(), bpt::xml_writer_make_settings<std::string>(' ',4));
 
   std::cout << "Write to XML complete." << std::endl;
+}
+
+std::string PhysicsEngine::formattedTime(const std::string &time_format) const
+{
+  const boost::posix_time::ptime curr_time = boost::posix_time::second_clock::local_time();
+  boost::posix_time::time_facet* facet = new boost::posix_time::time_facet();
+  facet->format(time_format.c_str());
+  std::stringstream ss;
+  ss.imbue(std::locale(std::locale::classic(), facet));
+  ss << curr_time;
+  return ss.str();
 }

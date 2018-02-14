@@ -26,9 +26,17 @@ namespace phys{
     // destructor
     ~PhysicsEngine() {};
 
+    // read DB locations from problem and store them in db_locs vector
+    void readDBLocFromProblem();
+
     // export results
     void writeResultsXml();
 
+    // TODO function that checks whether tempPath is writable
+
+    // Boost local time with specified format
+    std::string formattedTime(const std::string &time_format=std::string("%Y%m%d-%H%M%S")) const;
+    
     // ACCESSORS
     std::string name() {return eng_name;}
     std::string scriptPath() {return script_path;}
@@ -40,6 +48,7 @@ namespace phys{
     Problem problem;
 
     std::vector<std::pair<float,float>> db_locs; // location of free dbs
+    std::vector<std::tuple<float,float,float>> fixed_charges; // location of fixed charges
     boost::circular_buffer<std::vector<int>> db_charges;
 
   private:
@@ -48,6 +57,8 @@ namespace phys{
     std::string in_path;      // input file path containing the problem to run
     std::string out_path;     // output file path containing the simulation result
     std::string temp_path;    // path where temporary files will be generated
+
+    int n_dbs=-1; // number of dbs TODO move to problem?
 
   };
 

@@ -9,8 +9,8 @@
 
 #include "afm_marcus.h"
 
+#include <math.h>
 #include <boost/filesystem.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 using namespace phys;
 
@@ -29,19 +29,14 @@ bool AFMMarcus::runSim()
 
   // determine the paths for exporting the minimized problem to the script, and 
   // importing the results from the script
+  // FUTURE move all these temp stuff over to phys_engine
   std::string tmp_dir, script_problem_path, script_result_path;
   if (!tempPath().compare("")) {
     // use supplied temp path if available
     tmp_dir = tempPath();
   } else {
     // get current time formatted yyyymmdd-hhmmss
-    const boost::posix_time::ptime curr_time = boost::posix_time::second_clock::local_time();
-    boost::posix_time::time_facet* facet = new boost::posix_time::time_facet();
-    facet->format("%Y%m%d-%H%M%S");
-    std::stringstream ss;
-    ss.imbue(std::locale(std::locale::classic(), facet));
-    ss << curr_time;
-    const std::string curr_time_str = ss.str();
+    std::string curr_time_str = formattedTime("%Y%m%d-%H%M%S");
 
     tmp_dir = boost::filesystem::temp_directory_path().string();
     tmp_dir += "/afm_marcus/" + curr_time_str;
@@ -88,8 +83,75 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   //   AFM Path
   //   DB location in lattice units
   //   Other simulation parameters
-  // TODO
-  return false;
+  // NOTE y lattice units are WRONG right now. Don't worry at this point but deal with it when 2D scans are considered. TODO
+
+  // convert db locations to lattice unit
+  for (std::pair<float,float> db_loc : db_locs) {
+    int x_lu = round(db_loc.first / 3.84);
+    int y_lu = round(db_loc.second / 7.68) + round(fmod(db_loc.second, 7.68) / 2.4); // TODO wrong, fix later
+    db_locs_lu.push_back(std::make_pair(x_lu, y_lu));
+    std::cout << "DB in Lattice Unit: x=" << x_lu << ", y=" << y_lu << std::endl;
+  }
+
+  // convert afm nodes to lattice unit
+  std::vector<std::tuple<int,int,float>> afm_nodes_loc;
+  std::shared_ptr<Problem::AFMPath> sim_afm_path = problem.getAFMPath(problem.simulateAFMPathInd());
+  for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
+    int x_lu = round(afmnode->x / 3.84);
+    int y_lu = round(afmnode->y / 7.68) + round(fmod(afmnode->y, 7.68) / 2.4); // TODO also wrong
+    float z = afmnode->z;
+    afm_nodes_loc.push_back(std::make_tuple(x_lu, y_lu, z));
+  }
+
+  // TODO implement path settings in GUI
+  // TODO if there are multiple paths, there should be a way to determine which one to use for sim
+
+  std::cout << "Writing minimized problem for AFMMarcus Python script..." << std::endl;
+  std::cout << "Problem loc=" << script_problem_path << std::endl;
+
+  // define major XML nodes
+  bpt::ptree tree;
+  bpt::ptree node_root;     // <min_problem>
+  bpt::ptree node_dbs;      // <dbs>
+  bpt::ptree node_afmnodes; // <afm_nodes>
+
+  // dbs
+  for (std::pair<int,int> dbl : db_locs_lu) {
+    bpt::ptree node_dbdot;
+    node_dbdot.put("<xmlattr>.x", std::to_string(dbl.first).c_str());
+    node_dbdot.put("<xmlattr>.y", std::to_string(dbl.second).c_str());
+    node_dbs.add_child("dbdot", node_dbdot);
+  }
+
+  // afm nodes
+  /* adapt this in the future when 2D scans are considered
+  for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
+    bpt::ptree node_afmnode;
+    node_afmnode.put("<xmlattr>.x", std::to_string(afmnode->x).c_str());
+    node_afmnode.put("<xmlattr>.y", std::to_string(afmnode->y).c_str());
+    node_afmnode.put("<xmlattr>.z", std::to_string(afmnode->z).c_str());
+    node_afmnodes.add_child("afmnode", node_afmnode);
+  }*/
+  for (std::tuple<int,int,float> afm_node_loc : afm_nodes_loc) {
+    bpt::ptree node_afmnode;
+    node_afmnode.put("<xmlattr>.x", std::to_string(std::get<0>(afm_node_loc)).c_str());
+    node_afmnode.put("<xmlattr>.y", std::to_string(std::get<1>(afm_node_loc)).c_str());
+    node_afmnode.put("<xmlattr>.z", std::to_string(std::get<2>(afm_node_loc)).c_str());
+    node_afmnodes.add_child("afmnode", node_afmnode);
+  }
+
+  // add nodes to appropriate parent
+  node_root.add_child("dbs", node_dbs);
+  node_root.add_child("afmnodes", node_afmnodes);
+  tree.add_child("min_problem", node_root);
+
+  // write to file
+  bpt::write_xml(script_problem_path, tree, std::locale(), 
+                    bpt::xml_writer_make_settings<std::string>(' ',4));
+
+  std::cout << "Finished writing minimized problem" << std::endl;
+
+  return true;
 }
 
 bool AFMMarcus::importResultFromScript(const std::string &script_result_path)
