@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
   // maybe make a struct to contain program options in case of more input options
   if_name = (argc < 2) ? "cooldbdesign.xml" : argv[1];
   of_name = (argc < 3) ? "cooloutput.xml" : argv[2];
-  script_path = (argc < 4) ? "test.py" : argv[3];
+  script_path = (argc < 4) ? "test.py" : argv[3]; // TODO default to blank before porting back to generic
   temp_path = (argc < 5) ? "./tmp" : argv[4];
 
   std::cout << "In File: " << if_name << std::endl;

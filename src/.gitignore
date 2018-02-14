@@ -1,0 +1,5 @@
+*.swp
+bin/*
+build/*
+afmmarcus
+cooldbdesign.xml

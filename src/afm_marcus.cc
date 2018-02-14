@@ -45,6 +45,7 @@ bool AFMMarcus::runSim()
 
     tmp_dir = boost::filesystem::temp_directory_path().string();
     tmp_dir += "/afm_marcus/" + curr_time_str;
+    std::cout << "Temp directory = " << tmp_dir << std::endl;
   }
   boost::filesystem::create_directories(tmp_dir);
   script_problem_path = tmp_dir + "/afmmarcus_problem.xml";
@@ -83,7 +84,11 @@ bool AFMMarcus::runSim()
 
 bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
 {
-
+  // for AFMMarcus, only the following items are needed:
+  //   AFM Path
+  //   DB location in lattice units
+  //   Other simulation parameters
+  // TODO
   return false;
 }
 
