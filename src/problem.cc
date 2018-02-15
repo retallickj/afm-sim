@@ -92,6 +92,19 @@ void Problem::DBIterator::pop()
 
 
 
+
+// Accessors
+
+std::vector<std::string> Problem::getParameterKeys() const
+{
+  std::vector<std::string> v;
+  for (std::pair<std::string,std::string> param : sim_params)
+    v.push_back(param.first);
+  return v;
+}
+
+
+
 // FILE HANDLING
 
 // parse problem XML, return true if successful
@@ -113,7 +126,7 @@ bool Problem::readProblem(const std::string &fname)
 
   // read simulation parameters, optional
   std::cout << "Read simulation parameters" << std::endl;
-  if (tree.count("dbdesigner.sim_params") != 0 && !readSimulationParam(tree.get_child("dbdesigner.sim_params")))
+  if (!readSimulationParam(tree.get_child("dbdesigner.sim_params")))
     return false;
 
   // read items, required

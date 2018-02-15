@@ -116,9 +116,15 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
 
   // define major XML nodes
   bpt::ptree tree;
-  bpt::ptree node_root;     // <min_problem>
+  bpt::ptree node_root;     // <min_problem>, root
+  bpt::ptree node_params;   // <params>
   bpt::ptree node_dbs;      // <dbs>
   bpt::ptree node_afmnodes; // <afm_nodes>
+
+  
+  for (std::string param_key : problem.getParameterKeys()) {
+    node_params.put(param_key, problem.getParameter(param_key));
+  }
 
   // dbs
   for (std::pair<int,int> dbl : db_locs_lu) {
@@ -146,6 +152,7 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   }
 
   // add nodes to appropriate parent
+  node_root.add_child("params", node_params);
   node_root.add_child("dbs", node_dbs);
   node_root.add_child("afmnodes", node_afmnodes);
   tree.add_child("min_problem", node_root);

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<min_problem>
+    <params>
+        <scan_type>0</scan_type>
+        <write_strength>0.01</write_strength>
+        <bias>0</bias>
+        <num_electrons>3</num_electrons>
+        <num_scans>200</num_scans>
+        <lattice_padding_l>3</lattice_padding_l>
+        <lattice_padding_r>3</lattice_padding_r>
+        <tip_speed>82</tip_speed>
+    </params>
+    <dbs>
+        <dbdot x="1" y="0"/>
+        <dbdot x="8" y="0"/>
+        <dbdot x="10" y="0"/>
+        <dbdot x="15" y="0"/>
+        <dbdot x="17" y="0"/>
+        <dbdot x="24" y="0"/>
+    </dbs>
+    <afmnodes>
+        <afmnode x="0" y="0" z="0.000000"/>
+        <afmnode x="4" y="0" z="0.000000"/>
+        <afmnode x="0" y="5" z="0.000000"/>
+    </afmnodes>
+</min_problem>
