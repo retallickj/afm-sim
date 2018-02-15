@@ -105,18 +105,18 @@ bool Problem::readProblem(const std::string &fname)
 
   // parse XML
 
-  // read program properties
+  // read program properties, optional
   // TODO read program node
 
-  // read material properties
+  // read material properties, optional
   // TODO read material_prop node
 
-  // read simulation parameters
+  // read simulation parameters, optional
   std::cout << "Read simulation parameters" << std::endl;
-  if(!readSimulationParam(tree.get_child("dbdesigner.sim_params")))
+  if (tree.count("dbdesigner.sim_params") != 0 && !readSimulationParam(tree.get_child("dbdesigner.sim_params")))
     return false;
 
-  // read items
+  // read items, required
   std::cout << "Read items tree" << std::endl;
   if(!readDesign(tree.get_child("dbdesigner.design"), db_tree))
     return false;
@@ -187,6 +187,8 @@ bool Problem::readItemTree(const bpt::ptree &subtree, const std::shared_ptr<Aggr
     } else if (!item_name.compare("dbdot")) {
       // add DBDot to tree
       readDBDot(item_tree.second, agg_parent);
+    } else if (!item_name.compare("<xmlattr>")) {
+      // do nothing
     } else {
       std::cout << "Encountered unknown item node: " << item_tree.first << std::endl;
     }
@@ -220,6 +222,8 @@ bool Problem::readAFMLayer(const bpt::ptree &subtree)
     if (!item_name.compare("afmpath")) {
       // create new AFMPath and add to afm_paths vector
       readAFMPath(path_tree.second);
+    } else if (!item_name.compare("<xmlattr>")) {
+      // do nothing
     } else {
       std::cout << "Encountered unknown item node: " << path_tree.first << std::endl;
     }
@@ -235,7 +239,10 @@ bool Problem::readAFMPath(const bpt::ptree &subtree)
   afm_paths.push_back(std::make_shared<AFMPath>());
 
   // check if this path if the one used for simulation
-  if (subtree.get<bool>("<xmlattr>.use_for_sim"))
+
+//optional< const ptree& > child = node.get_child_optional( "possibly_missing_node" );
+
+  if (subtree.count("<xmlattr>.use_for_sim") != 0 && subtree.get<bool>("<xmlattr>.use_for_sim"))
     sim_afm_path_ind = afm_paths.size()-1;
 
   // read x and y from XML stream

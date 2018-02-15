@@ -111,9 +111,6 @@ namespace phys{
 
 
 
-    // File Handling
-    bool readProblem(const std::string &fname);
-
     // Accessors
     bool parameterExists(const std::string &key) {return sim_params.find(key) != sim_params.end();}
     std::string getParameter(const std::string &key) {return sim_params.find(key) != sim_params.end() ? sim_params.at(key) : "";}
@@ -121,6 +118,10 @@ namespace phys{
     int simulateAFMPathInd() {return sim_afm_path_ind;} // the AFM path to use for simulation
     std::shared_ptr<AFMPath> getAFMPath(int path_ind) {return afm_paths.at(path_ind);}
 
+
+
+    // File Handling
+    bool readProblem(const std::string &fname);
 
 
   private:

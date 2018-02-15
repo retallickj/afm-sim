@@ -95,7 +95,12 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
 
   // convert afm nodes to lattice unit
   std::vector<std::tuple<int,int,float>> afm_nodes_loc;
-  std::shared_ptr<Problem::AFMPath> sim_afm_path = problem.getAFMPath(problem.simulateAFMPathInd());
+  int sim_afm_path_ind = problem.simulateAFMPathInd();
+  if (sim_afm_path_ind == -1) {
+    std::cout << "No AFMPath index specified, this simulation will use the first path available." << std::endl;
+    sim_afm_path_ind = 0;
+  }
+  std::shared_ptr<Problem::AFMPath> sim_afm_path = problem.getAFMPath(sim_afm_path_ind);
   for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
     int x_lu = round(afmnode->x / 3.84);
     int y_lu = round(afmnode->y / 7.68) + round(fmod(afmnode->y, 7.68) / 2.4); // TODO also wrong
