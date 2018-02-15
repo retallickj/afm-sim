@@ -2,8 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
-from marcus import MarcusModel
+#from marcus import MarcusModel
+from hopper import HoppingModel
 
+Model = lambda X: HoppingModel(X, model='VRH')
 
 class AFMLine:
     '''AFM simulator for a line of DBs with sequential 1D scan'''
@@ -31,7 +33,7 @@ class AFMLine:
 
         self.X = sorted([x-min(X) for x in X])
         self.N = len(self.X)
-        self.model = MarcusModel(X)
+        self.model = Model(X)
 
         self.setScanType()
 
