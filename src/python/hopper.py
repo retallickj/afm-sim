@@ -31,6 +31,7 @@ class HoppingModel:
     # lattice parameters
     a = 3.84    # lattice vector in x, angstroms    (intra dimer row)
     b = 7.68    # lattice vector in y, angstroms    (inter dimer row)
+    c = 2.25    # dimer pair separation, angstroms
 
     # general settings
     fixed_pop = True        # fixed number of electrons
@@ -40,14 +41,16 @@ class HoppingModel:
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
 
-    def __init__(self, X, Y=None, model='VRH', **kwargs):
+    def __init__(self, X, model='VRH', **kwargs):
         '''Construct a HoppingModel for a DB arrangement with the given x and
-        optinoal y coordinates in unit of the lattice vectors. For now, assume
+        optional y coordinates in unit of the lattice vectors. For now, assume
         only the top site of each dimer pair can be a DB.
 
         inputs:
-            X       : Dimer column for each DB
-            Y       : Dimer row for each DB
+            X       : Iterable of DB locations. Each elements of X should be a
+                      3-tuple (x,y,b) with x and y the dimer column and row and
+                      b true if the DB is at the bottom of the dimer pair. If
+                      X[i] is an integer x, it gets mapped to (x,0,0).
             model   : Type of hopping rate model
 
         optional key-val arguments:
@@ -55,11 +58,7 @@ class HoppingModel:
         '''
 
         # format and store db locations and number
-        self.X = np.array(X).reshape([-1,])
-        self.N = len(self.X)
-        self.Y = np.zeros(self.N) if Y is None else np.array(Y).reshape([-1,])
-
-        assert self.X.shape == self.Y.shape, 'X,Y shape mismatch'
+        self.__parseX(X)
 
         self.charge = np.zeros([self.N,], dtype=int)    # charges at each db
 
@@ -213,3 +212,14 @@ class HoppingModel:
 
         inds = self.state[:self.Nel]
         return -np.sum((self.bias+self.dbias)[inds]) + .5*np.sum(self.V[inds,:][:,inds])
+
+
+    def __parseX(self, X):
+        '''Parse the DB location information'''
+
+        f = self.c/self.b   # dimer pair relative separation factor
+
+        X, Y, B = zip(*map(lambda x: (x,0,0) if isinstance(x,int) else x, X))
+        self.X = np.array(X).reshape([-1,])
+        self.Y = np.array([y+f*b for y,b in zip(Y,B)]).reshape([-1,])
+        self.N = len(self.X)
