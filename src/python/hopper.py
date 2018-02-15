@@ -80,7 +80,7 @@ class HoppingModel:
 
         # setup model
         if model not in models:
-            raise KeyError('Invalid model type. Choose from {0}'.format(
+            raise KeyError('Invalid model type. Choose from [{0}]'.format(
                                 ', '.join(models.keys())))
         self.model = models[model]()
         self.model.setup(dX, dY)

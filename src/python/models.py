@@ -20,7 +20,7 @@ class BaseModel(object):
     # shared physical constants
     hbar    = 6.582e-16     # eV.s
     kb      = 8.617e-05     # eV/K
-    T       = 4.            # K
+    T       = 4.0            # K
 
     def __init__(self):
         ''' '''
@@ -54,8 +54,8 @@ class VRHModel(BaseModel):
 
     # model-specific parameters
     alph    = 1e-2     # inverse attenuation length, 1/angstroms
-    r0      = 1.e24    # scaling prefactor for rates
-    lamb    = 0.02     # self-trapping energy, eV
+    r0      = 1.e11   # scaling prefactor for rates
+    lamb    = 0.01      # self-trapping energy, eV
 
     def __init__(self):
         super(VRHModel, self).__init__()
@@ -64,7 +64,6 @@ class VRHModel(BaseModel):
     def setup(self, dX, dY):
         R = np.sqrt(dX**2+dY**2)
         self.T0 = self.r0*np.exp(-2*self.alph*R)
-        print(self.T0)
 
     # TODO: problem with exp overflow here, decreases in energy beyond lamb
     #       cause essentially instantaneous hops
@@ -76,13 +75,11 @@ class MarcusModel(BaseModel):
     '''Marcus Theory model for hopping rates'''
 
     # model-specific parameters
-    lamb    = 0.11      # reorganization energy, eV
+    lamb    = 0.04      # reorganization energy, eV
 
     # transfer integral parameters
-    t0      = 1e8       # prefactor
+    t0      = 1e-3      # prefactor
     alph    = 1e-2      # inverse attenuation length, 1/angstroms
-
-    a = 3.84      # length scale
 
     def __init__(self):
         super(MarcusModel, self).__init__()

@@ -5,7 +5,7 @@ from matplotlib.colors import LinearSegmentedColormap
 #from marcus import MarcusModel
 from hopper import HoppingModel
 
-Model = lambda X: HoppingModel(X, model='VRH')
+Model = lambda X: HoppingModel(X, model='marcus')
 
 class AFMLine:
     '''AFM simulator for a line of DBs with sequential 1D scan'''
