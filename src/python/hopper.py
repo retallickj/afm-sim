@@ -185,6 +185,13 @@ class HoppingModel:
         self.lifetimes[ind] = self.rebirth()
         self.update()
 
+    def burn(self, nhops):
+        '''Burns through the given number of hopping events'''
+
+        for n in range(nhops):
+            self.run(self.peek()[0])
+
+
     def run(self, dt):
         '''Run the inherent dynamics for the given number of seconds'''
 
@@ -212,7 +219,6 @@ class HoppingModel:
 
         inds = self.state[:self.Nel]
         return -np.sum((self.bias+self.dbias)[inds]) + .5*np.sum(self.V[inds,:][:,inds])
-
 
     def __parseX(self, X):
         '''Parse the DB location information'''
