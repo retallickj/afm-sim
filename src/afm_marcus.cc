@@ -54,8 +54,8 @@ bool AFMMarcus::runSim()
   // setup command for invoking python script with the input and output file paths as 
   // arguments. NOTE might not work on Windows, look into PyRun_SimpleFile if necessary.
   std::string command = "python " + scriptPath() + " ";
-  command += script_problem_path + " "; // problem path for the script to read
-  command += script_result_path;        // result path that the script writes to
+  command += "-i " + script_problem_path + " "; // problem path for the script to read
+  command += "-o " + script_result_path;        // result path that the script writes to
 
   // call the script. This is non-forking so current process will wait until it finishes
   system(command.c_str());
@@ -95,17 +95,19 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
 
   // convert afm nodes to lattice unit
   std::vector<std::tuple<int,int,float>> afm_nodes_loc;
-  int sim_afm_path_ind = problem.simulateAFMPathInd();
-  if (sim_afm_path_ind == -1) {
-    std::cout << "No AFMPath index specified, this simulation will use the first path available." << std::endl;
-    sim_afm_path_ind = 0;
-  }
-  std::shared_ptr<Problem::AFMPath> sim_afm_path = problem.getAFMPath(sim_afm_path_ind);
-  for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
-    int x_lu = round(afmnode->x / 3.84);
-    int y_lu = round(afmnode->y / 7.68) + round(fmod(afmnode->y, 7.68) / 2.4); // TODO also wrong
-    float z = afmnode->z;
-    afm_nodes_loc.push_back(std::make_tuple(x_lu, y_lu, z));
+  if (problem.afmPathCount() > 0) {
+    int sim_afm_path_ind = problem.simulateAFMPathInd();
+    if (sim_afm_path_ind == -1) {
+      std::cout << "No AFMPath index specified, this simulation will use the first path available." << std::endl;
+      sim_afm_path_ind = 0;
+    }
+    std::shared_ptr<Problem::AFMPath> sim_afm_path = problem.getAFMPath(sim_afm_path_ind);
+    for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
+      int x_lu = round(afmnode->x / 3.84);
+      int y_lu = round(afmnode->y / 7.68) + round(fmod(afmnode->y, 7.68) / 2.4); // TODO also wrong
+      float z = afmnode->z;
+      afm_nodes_loc.push_back(std::make_tuple(x_lu, y_lu, z));
+    }
   }
 
   // TODO implement path settings in GUI
@@ -168,6 +170,7 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
 
 bool AFMMarcus::importResultFromScript(const std::string &script_result_path)
 {
+  
 
   return false;
 }

@@ -32,6 +32,8 @@ class DBSimConnector:
             raise argparse.ArgumentTypeError("{0} does not exist".format(fpath))
         return fpath
 
+    
+    # Deal with input XML
     def parseInputXml(self, fpath):
         '''Parse the input XML file input a form that AFMLine understands'''
         root = ET.parse(fpath).getroot()
@@ -64,6 +66,8 @@ class DBSimConnector:
                                         float(child.attrib['z'])))
                 print("afmnode: %s, %s, %s" % (child.attrib['x'], child.attrib['y'], child.attrib['z']))
 
+
+    # Run simulation
     def runSimulation(self):
         '''Run the simulation with the parameters extracted from parseInputXml'''
 
@@ -90,12 +94,13 @@ class DBSimConnector:
         #self.afm.run(Nel=3, nscans=200, pad=[3,3], srate=82)
 
 
+    # Export the results
     def exportResults(self, fpath):
         '''Export the results to XML file for C++ physics engine connector to parse
         and return to GUI'''
         if os.path.exists(fpath):
             raise FileExistsError("There's already a file at the indicated output path, \
-                    aborting")
+                                    aborting")
 
         node_root = ET.Element("afm_results")
         node_dbs = ET.SubElement(node_root, "dbs")

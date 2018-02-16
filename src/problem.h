@@ -116,6 +116,7 @@ namespace phys{
     std::string getParameter(const std::string &key) {return sim_params.find(key) != sim_params.end() ? sim_params.at(key) : "";}
     std::vector<std::string> getParameterKeys() const;
 
+    int afmPathCount() const {return afm_paths.size();}
     int simulateAFMPathInd() {return sim_afm_path_ind;} // the AFM path to use for simulation
     std::shared_ptr<AFMPath> getAFMPath(int path_ind) {return afm_paths.at(path_ind);}
 
