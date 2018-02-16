@@ -25,8 +25,9 @@ class HoppingModel:
     eps0    = 8.854e-12     # F/m
     q0      = 1.602e-19     # C
     epsr    = 11.7          # relative permittivity
+    #epsr    = 6.4          # relative permittivity
 
-    Kc = 1e10*q0/(2*np.pi*epsr*eps0)    # Coulomb strength, eV.angstrom
+    Kc = 1e10*q0/(4*np.pi*epsr*eps0)    # Coulomb strength, eV.angstrom
 
     # lattice parameters
     a = 3.84    # lattice vector in x, angstroms    (intra dimer row)
@@ -36,12 +37,12 @@ class HoppingModel:
     # general settings
     fixed_pop = True        # fixed number of electrons
     fixed_rho = 0.5         # filling density if fixed_pop (Nel = round(N*fixed_rho))
-    burn_count = 10        # number of burn hops per db
+    burn_count = 10         # number of burns hops per db
 
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
 
-    def __init__(self, X, model='VRH', **kwargs):
+    def __init__(self, X, model='marcus', **kwargs):
         '''Construct a HoppingModel for a DB arrangement with the given x and
         optional y coordinates in unit of the lattice vectors. For now, assume
         only the top site of each dimer pair can be a DB.
@@ -82,7 +83,7 @@ class HoppingModel:
             raise KeyError('Invalid model type. Choose from [{0}]'.format(
                                 ', '.join(models.keys())))
         self.model = models[model]()
-        self.model.setup(dX, dY)
+        self.model.setup(self.a*self.X, self.b*self.Y)
 
     def setElectronCount(self, n):
         '''Set the number of electrons in the system'''

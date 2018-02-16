@@ -26,12 +26,12 @@ class BaseModel(object):
         ''' '''
         pass
 
-    def setup(self, dX, dY):
+    def setup(self, X, Y):
         '''Setup the model for the given DB arrangement
 
         inputs:
-            dX  : matrix of x differences, angstroms
-            dY  : matrix of y differences, angstroms
+            X  : matrix of x positions, angstroms
+            Y  : matrix of y positions, angstroms
         '''
         raise NotImplementedError()
 
@@ -61,7 +61,8 @@ class VRHModel(BaseModel):
         super(VRHModel, self).__init__()
         self.beta = 1./(self.kb*self.T)
 
-    def setup(self, dX, dY):
+    def setup(self, X, Y):
+        dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
         R = np.sqrt(dX**2+dY**2)
         self.T0 = self.r0*np.exp(-2*self.alph*R)
 
@@ -87,7 +88,8 @@ class MarcusModel(BaseModel):
 
     # inheritted methods
 
-    def setup(self, dX, dY):
+    def setup(self, X, Y):
+        dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
         R = np.sqrt(dX**2+dY**2)
         self.Tp = np.abs(self.tint(R))**2/self.hbar*np.sqrt(self.lbeta*np.pi)
 
