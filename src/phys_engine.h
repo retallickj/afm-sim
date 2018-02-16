@@ -31,6 +31,11 @@ namespace phys{
 
     // export results
     void writeResultsXml();
+    bpt::ptree xmlNodeEngInfo();
+    bpt::ptree xmlNodeSimParams();
+    bpt::ptree xmlNodePhysloc();
+    bpt::ptree xmlNodeElecDist();
+    bpt::ptree xmlNodeLineScans();
 
     // TODO function that checks whether tempPath is writable
 
@@ -47,9 +52,19 @@ namespace phys{
     // variables
     Problem problem;
 
+    // structs to store exportable variables
+    struct LineScanPath {
+      int path_id;  // the scan_id in case there were multiple scans
+      // TODO offset of db_locs from physloc
+      std::vector<std::pair<int,int>> db_locs_enc;   // DB locations encountered in angstrom
+      std::vector<std::string> results;   // results of line scans
+    };
+
+    // exportable variables/lists
     std::vector<std::pair<float,float>> db_locs; // location of free dbs
     std::vector<std::tuple<float,float,float>> fixed_charges; // location of fixed charges
     boost::circular_buffer<std::vector<int>> db_charges;
+    std::vector<LineScanPath> line_scan_paths;
 
   private:
     std::string eng_name;     // name of this physics engine

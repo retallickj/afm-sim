@@ -28,7 +28,8 @@ namespace phys {
     bool exportProblemForScript(const std::string &script_problem_path);
 
     // Import the simulation result from the script, returns true if the read was successful
-    bool importResultFromScript(const std::string &script_result_path);
+    bool importResultsFromScript(const std::string &script_result_path);
+    phys::PhysicsEngine::LineScan readLineScan(bpt::ptree::value_type const &path_node);
     
 
     // VARS

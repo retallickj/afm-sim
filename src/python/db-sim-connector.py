@@ -103,14 +103,17 @@ class DBSimConnector:
                                     aborting")
 
         node_root = ET.Element("afm_results")
-        node_dbs = ET.SubElement(node_root, "dbs")
-        node_scan_results = ET.SubElement(node_root, "scan_results", scan_type=self.simparams['scan_type'])
+        node_path = ET.SubElement(node_root, "afm_path", path_id="-1")
+        # TODO change path_id to generic
 
-        # return the dbs in AFMLine in case the order has been changed
-        for db in self.dbs:
-            ET.SubElement(node_dbs, "db", x=str(db[0]), y=str(db[1])).text = ""
 
-        # write results
+        # the DBs encountered by this AFM path
+        node_dbs_encountered = ET.SubElement(node_path, "dbs_encountered")
+        for db in self.dbs: # TODO this isn't actually the encountered dbs, update
+            ET.SubElement(node_dbs_encountered, "db", x=str(db[0]), y=str(db[1])).text = ""
+
+        # line scan results by this AFM path
+        node_scan_results = ET.SubElement(node_path, "scan_results")
         for line_scan in self.afm.charges:
             line_charge_str = ""
             for charge in line_scan:
