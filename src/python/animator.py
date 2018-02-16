@@ -65,7 +65,7 @@ class HoppingAnimator(QGraphicsView):
     c = 2.25    # dimer pair separation, angstroms
 
     WINX = 1000  # window width
-    WINY = 400
+    WINY = 800
 
     rate = 100  # millis/second
 

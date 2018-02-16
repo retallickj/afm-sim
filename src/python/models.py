@@ -19,12 +19,10 @@ class BaseModel(object):
 
     # shared physical constants
     hbar    = 6.582e-16     # eV.s
-    kb      = 8.617e-05     # eV/K
-    T       = 4.0            # K
 
-    def __init__(self):
-        ''' '''
-        pass
+    def __init__(self, kt):
+        '''Initialise a hopping rate model with the given thermal energy'''
+        self.kt = kt
 
     def setup(self, X, Y):
         '''Setup the model for the given DB arrangement
@@ -57,9 +55,9 @@ class VRHModel(BaseModel):
     r0      = 1.e11   # scaling prefactor for rates
     lamb    = 0.01      # self-trapping energy, eV
 
-    def __init__(self):
-        super(VRHModel, self).__init__()
-        self.beta = 1./(self.kb*self.T)
+    def __init__(self, kt):
+        super(VRHModel, self).__init__(kt)
+        self.beta = 1./self.kt
 
     def setup(self, X, Y):
         dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
@@ -82,9 +80,9 @@ class MarcusModel(BaseModel):
     t0      = 1e-3      # prefactor
     alph    = 1e-2      # inverse attenuation length, 1/angstroms
 
-    def __init__(self):
-        super(MarcusModel, self).__init__()
-        self.lbeta = 1./(self.lamb*self.kb*self.T)
+    def __init__(self, kt):
+        super(MarcusModel, self).__init__(kt)
+        self.lbeta = 1./(self.lamb*self.kt)
 
     # inheritted methods
 

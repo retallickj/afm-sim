@@ -24,8 +24,9 @@ class HoppingModel:
     debye   = 50            # debye screening length, angstroms
     eps0    = 8.854e-12     # F/m
     q0      = 1.602e-19     # C
+    kb      = 8.617e-05     # eV/K
+    T       = 4.0           # system temperature, K
     epsr    = 11.7          # relative permittivity
-    #epsr    = 6.4          # relative permittivity
 
     Kc = 1e10*q0/(4*np.pi*epsr*eps0)    # Coulomb strength, eV.angstrom
 
@@ -78,12 +79,12 @@ class HoppingModel:
         # by default, use
         self.Nel = int(round(self.N*self.fixed_rho))
 
-        # setup model
+        # create model, setup on initialisation
         if model not in models:
             raise KeyError('Invalid model type. Choose from [{0}]'.format(
                                 ', '.join(models.keys())))
-        self.model = models[model]()
-        self.model.setup(self.a*self.X, self.b*self.Y)
+        self.model = models[model](self.kb*self.T)
+        self.channels = []
 
     def setElectronCount(self, n):
         '''Set the number of electrons in the system'''
@@ -114,6 +115,10 @@ class HoppingModel:
 
         self.bias = F*(v[0]*self.a*self.X+v[1]*self.b*self.Y)
 
+    def addChannel(self, channel):
+        '''Add a Channel instance to the HoppingModel'''
+
+        self.channels.append(channel)
 
 
     # FUNCTIONAL METHODS
@@ -136,6 +141,12 @@ class HoppingModel:
 
         self.charge[self.state[:self.Nel]]=1
         self.charge[self.state[self.Nel:]]=0
+
+        # setup model and channels
+        X, Y = self.a*self.X, self.b*self.Y
+        self.model.setup(X, Y)
+        for channel in self.channels:
+            channel.setup(X, Y)
 
         self.update()
 
