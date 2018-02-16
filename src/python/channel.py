@@ -76,8 +76,8 @@ class Bulk(Channel):
 
     # inherited methods
 
-    def init(self):
-        super(Bulk, self).__init__()
+    def init(self, kt):
+        super(Bulk, self).__init__(kt)
         self.kt /= self.alpha
 
     def update(self, occ, nocc, beff):

@@ -197,6 +197,9 @@ if __name__ == '__main__':
 
     device = _or
 
+    # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
+    #       compile temp files into an animation ::'./rec.mp4'
+    # model = HoppingModel(device, model='marcus', record=True)
     model = HoppingModel(device, model='marcus')
     model.setElectronCount(5)
 
