@@ -36,7 +36,7 @@ class HoppingModel:
     # general settings
     fixed_pop = True        # fixed number of electrons
     fixed_rho = 0.5         # filling density if fixed_pop (Nel = round(N*fixed_rho))
-    burn_time = 500         # initial burn time, seconds
+    burn_count = 10        # number of burn hops per db
 
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
@@ -143,7 +143,9 @@ class HoppingModel:
 
         if charges is None:
             # burn off random initial state
-            self.run(self.burn_time)
+            self.burn(self.burn_count*self.N)
+
+
 
     def update(self):
         '''Update the energy deltas, tunneling rates, and tick rates'''

@@ -10,11 +10,12 @@ __copyright__   = 'MIT License'
 __version__     = '1.2'
 __date__        = '2018-02-15'  # last update
 
+import shutil, os
 import numpy as np
 from itertools import product
 
 from PyQt5.QtCore import (Qt, QTimer, QThread)
-from PyQt5.QtGui import (QPen, QBrush, QColor, QPainter)
+from PyQt5.QtGui import (QPen, QBrush, QColor, QPainter, QImage)
 from PyQt5.QtWidgets import (QApplication, QGraphicsView, QGraphicsScene,
                              QGraphicsEllipseItem)
 
@@ -69,8 +70,9 @@ class HoppingAnimator(QGraphicsView):
     rate = 100  # millis/second
 
     bgcol = QColor(29, 35, 56)  # background color
+    record_dir = './.temp_rec/'
 
-    def __init__(self, model):
+    def __init__(self, model, record=False, fps=30):
         '''Initialise the HoppingAnimator instance for the given DB positions.
         X should be formatted as for HoppingModel'''
 
@@ -84,7 +86,23 @@ class HoppingAnimator(QGraphicsView):
         self._initGUI()
 
         self.model.initialise()
-        self.model.burn(100)
+
+        # setup threads
+        self.threads = []
+        self.threads.append(Thread(self.tick))
+
+        # setup recording
+        self.recording = record
+        if record:
+            # force clean directory
+            if os.path.exists(self.record_dir):
+                shutil.rmtree(self.record_dir)
+            os.makedirs(self.record_dir)
+            self.rind = 0   # record index
+            self.fps = fps
+
+            # setup threads
+            self.threads.append(Thread(self.record))
 
     def _initGUI(self):
         '''Initialise the animator window'''
@@ -116,6 +134,33 @@ class HoppingAnimator(QGraphicsView):
             self.dbs.append(DB(self.a*x,self.b*y))
             self.scene.addItem(self.dbs[-1])
 
+    def record(self):
+        '''Record the QGraphicsScene at the given fps'''
+
+        assert self.fps>0 and self.fps<=1000, 'Invalid fps'
+
+        self.scene.setSceneRect(self.scene.itemsBoundingRect())
+        image = QImage(self.scene.sceneRect().size().toSize(), QImage.Format_ARGB32)
+        image.fill(self.bgcol)
+
+        painter = QPainter(image)
+        self.scene.render(painter)
+        image.save(os.path.join(self.record_dir, 'grab{0:06d}.png'.format(self.rind)))
+        painter.end()
+        self.rind += 1
+
+        self.rec_timer = QTimer()
+        self.rec_timer.timeout.connect(self.record)
+        self.rec_timer.start(int(1000./self.fps))
+
+    def compile(self):
+        '''compile the recording directory into a video'''
+
+        os.chdir(self.record_dir)
+        os.system("ffmpeg -r {0} -f image2 -i grab%06d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p ../rec.mp4".format(int(self.fps)))
+        os.chdir('..')
+        shutil.rmtree(self.record_dir)
+
     def tick(self):
         ''' '''
 
@@ -134,6 +179,11 @@ class HoppingAnimator(QGraphicsView):
         else:
             self.tick()
 
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Q:
+            if self.recording:
+                self.compile()
+            self.close()
 
 
 if __name__ == '__main__':
@@ -153,8 +203,8 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     animator = HoppingAnimator(model)
 
-    thread = Thread(animator.tick)
-    thread.start()
+    for thread in animator.threads:
+        thread.start()
 
     animator.show()
     sys.exit(app.exec_())
