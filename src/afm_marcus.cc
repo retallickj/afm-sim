@@ -80,7 +80,6 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   //   AFM Path
   //   DB location in lattice units
   //   Other simulation parameters
-  // NOTE y lattice units are WRONG right now. Don't worry at this point but deal with it when 2D scans are considered. TODO
 
   // convert db locations to lattice unit
   for (std::pair<float,float> db_loc : db_locs) {
@@ -136,14 +135,6 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   }
 
   // afm nodes
-  /* adapt this in the future when 2D scans are considered
-  for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
-    bpt::ptree node_afmnode;
-    node_afmnode.put("<xmlattr>.x", std::to_string(afmnode->x).c_str());
-    node_afmnode.put("<xmlattr>.y", std::to_string(afmnode->y).c_str());
-    node_afmnode.put("<xmlattr>.z", std::to_string(afmnode->z).c_str());
-    node_afmnodes.add_child("afmnode", node_afmnode);
-  }*/
   for (std::tuple<int,int,int,float> afm_node_loc : afm_node_locs) {
     bpt::ptree node_afmnode;
     node_afmnode.put("<xmlattr>.x", std::to_string(std::get<0>(afm_node_loc)).c_str());
