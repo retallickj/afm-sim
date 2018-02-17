@@ -37,6 +37,10 @@ class Channel(object):
 
         return self.lifetime/(self.tickrate+self.MTR)
 
+    def run(self, dt):
+        '''Advance the channel lifetime by the given amount'''
+        self.lifetime -= dt*self.tickrate
+
     def pop(self):
         '''Pop a charge off the channel. The HoppingModel should update its
         charge state and immediately pass new occ/nocc back'''
@@ -69,10 +73,10 @@ class Bulk(Channel):
     nu_off  = 1.    # maximum rate of hops from the bulk
 
     # energy offsets
-    mu_on   = 1.    # local energy at which electrons start hopping onto Bulk
-    mu_off  = 1.    # local energy at which electrons start hopping from Bulk
+    mu_on   = .2    # local energy at which electrons start hopping onto Bulk
+    mu_off  = .2    # local energy at which electrons start hopping from Bulk
 
-    alpha   = 1.    # damping factor for kt, higher means sharper transition
+    alpha   = 1.e3  # damping factor for kt, higher means sharper transition
 
     # inherited methods
 
@@ -90,8 +94,8 @@ class Bulk(Channel):
 
     def _compute_onrates(self, beff):
         '''Compute the hopping rates from occupied DBs to the Bulk'''
-        return self.nu_on/(1.+np.exp((beff[self.occ]-self.mu_on)/self.kt))
+        return self.nu_on/(1.+np.exp((beff[self.occ]+self.mu_on)/self.kt))
 
     def _compute_offrates(self, beff):
         '''Compute the hopping rates from the Bulk onto unoccupied DBs'''
-        return self.nu_off/(1.+np.exp(-(beff[self.nocc]-self.mu_off)/self.kt))
+        return self.nu_off/(1.+np.exp(-(beff[self.nocc]+self.mu_off)/self.kt))

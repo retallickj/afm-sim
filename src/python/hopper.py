@@ -13,6 +13,7 @@ __date__        = '2018-02-14'  # last update
 
 import numpy as np
 from models import models
+from channel import Bulk
 
 class HoppingModel:
     '''Time dependent surface hopping model for charge transfer in DBs'''
@@ -60,7 +61,7 @@ class HoppingModel:
         '''
 
         # format and store db locations and number
-        self.__parseX(X)
+        self._parseX(X)
 
         self.charge = np.zeros([self.N,], dtype=int)    # charges at each db
 
@@ -85,6 +86,8 @@ class HoppingModel:
                                 ', '.join(models.keys())))
         self.model = models[model](self.kb*self.T)
         self.channels = []
+
+        self.addChannel(Bulk(self.kb*self.T))
 
     def setElectronCount(self, n):
         '''Set the number of electrons in the system'''
@@ -117,7 +120,6 @@ class HoppingModel:
 
     def addChannel(self, channel):
         '''Add a Channel instance to the HoppingModel'''
-
         self.channels.append(channel)
 
 
@@ -150,7 +152,7 @@ class HoppingModel:
 
         self.update()
 
-        self.lifetimes = [self.rebirth() for _ in range(self.Nel)]
+        self.lifetimes = np.array([self.rebirth() for _ in range(self.N)])
         self.energy = self.computeEnergy()
 
         if charges is None:
@@ -164,20 +166,29 @@ class HoppingModel:
 
         occ, nocc = self.state[:self.Nel], self.state[self.Nel:]
 
+        # TODO: include channel contributions to beff
         # effective bias at each location
         beff = self.bias+self.dbias-np.dot(self.V, self.charge)
+
+        for channel in self.channels:
+            channel.update(occ, nocc, beff)
 
         # update parameters.... magic math
         self.dG = beff[occ].reshape(-1,1) - beff[nocc] - self.V[occ,:][:,nocc]
 
+        self.beff = beff    # store for dE on channel hop
         self.trates = self.model.rates(self.dG, occ, nocc)
         self.tickrates = np.sum(self.trates, axis=1)
+        if self.channels:
+            self.crates = np.array([channel.rates() for channel in self.channels]).T
+            self.tickrates += np.sum(self.crates, axis=1)
 
     def peek(self):
         '''Return the time before the next tunneling event and the index of the
         event'''
 
-        tdeltas = self.lifetimes/(self.tickrates+self.MTR)
+        occ = self.state[:self.Nel]
+        tdeltas = self.lifetimes[occ]/(self.tickrates+self.MTR)
         ind = np.argmin(tdeltas)
 
         return tdeltas[ind], ind
@@ -185,18 +196,21 @@ class HoppingModel:
     def hop(self, ind):
         '''Perform a hop with the given electron'''
 
-        src = self.state[ind]
+        src = self.state[ind]   # index of the electron to hop
 
         # determine target
-        P = np.copy(self.trates[ind])
-        t_ind = np.random.choice(range(self.Nel, self.N),p=P/P.sum())
-        target = self.state[t_ind]
+        P, targets = self.trates[ind], list(range(self.N-self.Nel))
+        if self.channels:
+            P = np.hstack([self.trates[ind], [np.sum(self.crates[ind])]])
+            targets.append(-1)
+        t_ind = np.random.choice(targets,p=P/P.sum())
 
-        # update
-        self.energy += self.dG[ind, t_ind-self.Nel]
-        self.charge[src], self.charge[target] = 0, 1
-        self.state[ind], self.state[t_ind] = target, src
-        self.lifetimes[ind] = self.rebirth()
+        # modify the charge state
+        if t_ind < 0:
+            self._channel_hop(ind)
+        else:
+            self._surface_hop(t_ind, ind)
+
         self.update()
 
     def burn(self, nhops):
@@ -212,7 +226,7 @@ class HoppingModel:
         while dt>0:
             tick, ind = self.peek()
             mtick = min(dt, tick)
-            self.lifetimes -= mtick*self.tickrates
+            self.lifetimes[self.state[:self.Nel]] -= mtick*self.tickrates
             if tick<=dt:
                 self.hop(ind)
             dt -= mtick
@@ -234,12 +248,30 @@ class HoppingModel:
         inds = self.state[:self.Nel]
         return -np.sum((self.bias+self.dbias)[inds]) + .5*np.sum(self.V[inds,:][:,inds])
 
-    def __parseX(self, X):
+    def _parseX(self, X):
         '''Parse the DB location information'''
 
         f = self.c/self.b   # dimer pair relative separation factor
 
         X, Y, B = zip(*map(lambda x: (x,0,0) if isinstance(x,int) else x, X))
         self.X = np.array(X).reshape([-1,])
-        self.Y = np.array([y+f*b for y,b in zip(Y,B)]).reshape([-1,])
+        self.Y = np.array([y+f*bool(b) for y,b in zip(Y,B)]).reshape([-1,])
         self.N = len(self.X)
+
+    def _channel_hop(self, ind):
+        '''Hop the electron given off the surface to some channel'''
+
+        src = self.state[ind]
+        self.energy +- self.beff[src]
+        self.charge[src] = 0
+        self.state[ind], self.state[self.Nel-1] = self.state[self.Nel-1], self.state[ind]
+        self.Nel -= 1
+
+    def _surface_hop(self, t_ind, ind):
+        '''Hop the elctron given by ind to the empty db given by t_ind'''
+
+        src, target = self.state[ind], self.state[self.Nel+t_ind]
+        self.energy += self.dG[ind, t_ind]
+        self.charge[src], self.charge[target] = 0, 1
+        self.state[ind], self.state[self.Nel+t_ind] = target, src
+        self.lifetimes[target] = self.rebirth()

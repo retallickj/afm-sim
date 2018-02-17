@@ -112,7 +112,7 @@ class HoppingAnimator(QGraphicsView):
 
         self._drawDBs()
 
-        self.setGeometry(0, 0, self.WINX, self.WINY)
+        self.setGeometry(100, 100, self.WINX, self.WINY)
         self.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
         self.setWindowTitle('Hopping Animator')
 
@@ -201,7 +201,7 @@ if __name__ == '__main__':
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
     model = HoppingModel(device, model='marcus')
-    model.setElectronCount(5)
+    model.setElectronCount(7)
 
     app = QApplication(sys.argv)
     animator = HoppingAnimator(model)
