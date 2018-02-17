@@ -64,11 +64,8 @@ bool AFMMarcus::runSim()
   if (!importResultsFromScript(script_result_path))
     return false;
 
-  // use writeResultXml in phys_engine to export the result, TODO with flags indicating
-  // what is being written
+  // use writeResultXml in phys_engine to export the result
   writeResultsXml();
-  // TODO update phys_engine's writeResultXml to be able to output the results
-  //      from this simulator
 
   std::cout << std::endl << "*** AFMMarcus: Simulation has completed ***" << std::endl;
   return true;
@@ -88,13 +85,13 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   // convert db locations to lattice unit
   for (std::pair<float,float> db_loc : db_locs) {
     int x_lu = round(db_loc.first / 3.84);
-    int y_lu = round(db_loc.second / 7.68) + round(fmod(db_loc.second, 7.68) / 2.4); // TODO wrong, fix later
-    db_locs_lu.push_back(std::make_pair(x_lu, y_lu));
-    std::cout << "DB in Lattice Unit: x=" << x_lu << ", y=" << y_lu << std::endl;
+    int y_lu = round(db_loc.second / 7.68);
+    int b = round(fmod(db_loc.second, 7.68) / 2.4); // 0 = top row, 1 = bottom row
+    db_locs_lu.push_back(std::make_tuple(x_lu, y_lu,b));
+    std::cout << "DB in Lattice Unit: x=" << x_lu << ", y=" << y_lu << ", b=" << b << std::endl;
   }
 
   // convert afm nodes to lattice unit
-  std::vector<std::tuple<int,int,float>> afm_nodes_loc;
   if (problem.afmPathCount() > 0) {
     int sim_afm_path_ind = problem.simulateAFMPathInd();
     if (sim_afm_path_ind == -1) {
@@ -104,9 +101,10 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
     std::shared_ptr<Problem::AFMPath> sim_afm_path = problem.getAFMPath(sim_afm_path_ind);
     for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
       int x_lu = round(afmnode->x / 3.84);
-      int y_lu = round(afmnode->y / 7.68) + round(fmod(afmnode->y, 7.68) / 2.4); // TODO also wrong
+      int y_lu = round(afmnode->y / 7.68);
+      int b = round(fmod(afmnode->y, 7.68) / 2.4);
       float z = afmnode->z;
-      afm_nodes_loc.push_back(std::make_tuple(x_lu, y_lu, z));
+      afm_node_locs.push_back(std::make_tuple(x_lu, y_lu, b, z));
     }
   }
 
@@ -131,8 +129,9 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   // dbs
   for (std::pair<int,int> dbl : db_locs_lu) {
     bpt::ptree node_dbdot;
-    node_dbdot.put("<xmlattr>.x", std::to_string(dbl.first).c_str());
-    node_dbdot.put("<xmlattr>.y", std::to_string(dbl.second).c_str());
+    node_dbdot.put("<xmlattr>.x", std::to_string(std::get<0>(dbl)).c_str());
+    node_dbdot.put("<xmlattr>.y", std::to_string(std::get<1>(dbl)).c_str());
+    node_dbdot.put("<xmlattr>.b", std::to_string(std::get<2>(dbl)).c_str());
     node_dbs.add_child("dbdot", node_dbdot);
   }
 
@@ -145,11 +144,12 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
     node_afmnode.put("<xmlattr>.z", std::to_string(afmnode->z).c_str());
     node_afmnodes.add_child("afmnode", node_afmnode);
   }*/
-  for (std::tuple<int,int,float> afm_node_loc : afm_nodes_loc) {
+  for (std::tuple<int,int,int,float> afm_node_loc : afm_node_locs) {
     bpt::ptree node_afmnode;
     node_afmnode.put("<xmlattr>.x", std::to_string(std::get<0>(afm_node_loc)).c_str());
     node_afmnode.put("<xmlattr>.y", std::to_string(std::get<1>(afm_node_loc)).c_str());
-    node_afmnode.put("<xmlattr>.z", std::to_string(std::get<2>(afm_node_loc)).c_str());
+    node_afmnode.put("<xmlattr>.b", std::to_string(std::get<2>(afm_node_loc)).c_str());
+    node_afmnode.put("<xmlattr>.z", std::to_string(std::get<3>(afm_node_loc)).c_str());
     node_afmnodes.add_child("afmnode", node_afmnode);
   }
 

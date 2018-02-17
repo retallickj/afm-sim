@@ -55,16 +55,17 @@ class DBSimConnector:
         '''Grab DBs from the dbs block'''
         for child in db_root:
             if child.tag == "dbdot":
-                self.dbs.append((int(child.attrib['x']), int(child.attrib['y'])))
-                print("dbdot: %s, %s" % (child.attrib['x'], child.attrib['y']))
+                self.dbs.append((int(child.attrib['x']), int(child.attrib['y']), int(child.attrib['b'])))
+                print("dbdot: %s, %s, %s" % (child.attrib['x'], child.attrib['y'], child.attrib['b']))
 
     def grabAFMNodes(self, afm_root):
         '''Grab AFMnodes from the afmnodes block'''
         for child in afm_root:
             if child.tag == "afmnode":
-                self.afmnodes.append((int(child.attrib['x']), int(child.attrib['y']),
-                                        float(child.attrib['z'])))
-                print("afmnode: %s, %s, %s" % (child.attrib['x'], child.attrib['y'], child.attrib['z']))
+                self.afmnodes.append((int(child.attrib['x']), int(child.attrib['y']), 
+                        int(child.attrib['b']), float(child.attrib['z'])))
+                print("afmnode: %s, %s, %s, %s" % (child.attrib['x'], child.attrib['y'], 
+                        child.attrib['b'], child.attrib['z']))
 
 
     # Run simulation
@@ -83,15 +84,11 @@ class DBSimConnector:
         self.afm = AFMLine(X)
         self.afm.setScanType(int(self.simparams['scan_type']), float(self.simparams['write_strength']))
         self.afm.setBias(float(self.simparams['bias']))
-        self.afm.run(Nel=int(self.simparams['num_electrons']), 
-                        nscans=int(self.simparams['num_scans']),
-                        pad=[int(self.simparams['lattice_padding_l']),
-                                int(self.simparams['lattice_padding_r'])])
-
-        # TODO remove the following lines after testing result write code
-        #self.afm = AFMLine([1,8,10,15,17,24])
-        #self.afm.setScanType(0)
-        #self.afm.run(Nel=3, nscans=200, pad=[3,3], srate=82)
+        self.afm.run(
+                Nel=int(self.simparams['num_electrons']), 
+                nscans=int(self.simparams['num_scans']),
+                pad=[int(self.simparams['lattice_padding_l']), int(self.simparams['lattice_padding_r'])]
+                )
 
 
     # Export the results
