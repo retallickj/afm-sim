@@ -187,7 +187,7 @@ bool AFMMarcus::importResultsFromScript(const std::string &script_result_path)
 
   std::cout << line_scan_paths.size() << " line scans recorded" << std::endl;
 
-  return false;
+  return true;
 }
 
 phys::PhysicsEngine::LineScanPath AFMMarcus::readLineScanPath(bpt::ptree::value_type const &path_node)
@@ -198,12 +198,12 @@ phys::PhysicsEngine::LineScanPath AFMMarcus::readLineScanPath(bpt::ptree::value_
 
   // read db encoutered by this AFM path
   for (bpt::ptree::value_type const &db_node : path_node.second.get_child("dbs_encountered")) {
-    line_scan.db_locs_lu.push_back(std::make_pair(
+    line_scan.db_locs_enc.push_back(std::make_pair(
           db_node.second.get<int>("<xmlattr>.x"),
           db_node.second.get<int>("<xmlattr>.y")
         )); // TODO convert db loc to angstrom and add offset
-    std::cout << "read db x=" << line_scan.db_locs_lu.back().first << 
-        ", y=" << line_scan.db_locs_lu.back().second << std::endl;
+    std::cout << "read db x=" << line_scan.db_locs_enc.back().first << 
+        ", y=" << line_scan.db_locs_enc.back().second << std::endl;
   }
 
   // read line scan results

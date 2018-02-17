@@ -54,12 +54,14 @@ void PhysicsEngine::writeResultsXml()
   bpt::ptree node_sim_params = xmlNodeSimParams();  // <sim_params>
   bpt::ptree node_physloc = xmlNodePhysloc();       // <physloc>
   bpt::ptree node_elec_dist = xmlNodeElecDist();    // <elec_dist>
+  bpt::ptree node_line_scans = xmlNodeLineScans();  // <line_scans>
 
   // add nodes to appropriate parent
   node_root.add_child("eng_info", node_eng_info);
   node_root.add_child("sim_params", node_sim_params);
   node_root.add_child("physloc", node_physloc);
   node_root.add_child("elec_dist", node_elec_dist);
+  node_root.add_child("line_scans", node_line_scans);
   tree.add_child("sim_out", node_root);
 
   // write to file
@@ -79,8 +81,10 @@ bpt::ptree PhysicsEngine::xmlNodeEngInfo()
 bpt::ptree PhysicsEngine::xmlNodeSimParams()
 {
   bpt::ptree node_sim_params;
-  for (std::pair<std::string,std::string> param : problem.sim_params)
-    node_sim_params.add_child(param.first, param.second);
+  //for (std::pair<std::string,std::string> param : problem.sim_params)
+  //  node_sim_params.add_child(param.first, param.second);
+  for (std::string param_key : problem.getParameterKeys())
+    node_sim_params.put(param_key, problem.getParameter(param_key));
   return node_sim_params;
 }
 
@@ -126,13 +130,16 @@ bpt::ptree PhysicsEngine::xmlNodeLineScans()
     }
 
     for (std::string scan_result : line_scan_path.results) {
-      node_scan_results.add_child("line_scan", scan_result);
+      //bpt::ptree node_scan_result;
+      //node_scan_result.put(scan_result);
+      node_scan_results.add("line_scan", scan_result);
     }
 
-    node_line_scan_path.add_child("dbs_encountered", node_dbs_encountered);
-    node_line_scan_path.add_child("scan_results", node_scan_results);
+    node_afm_path.add_child("dbs_encountered", node_dbs_encountered);
+    node_afm_path.add_child("scan_results", node_scan_results);
     node_line_scan_paths.add_child("afm_path", node_afm_path);
   }
+  return node_line_scan_paths;
 }
 
 std::string PhysicsEngine::formattedTime(const std::string &time_format) const

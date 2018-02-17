@@ -29,7 +29,7 @@ namespace phys {
 
     // Import the simulation result from the script, returns true if the read was successful
     bool importResultsFromScript(const std::string &script_result_path);
-    phys::PhysicsEngine::LineScan readLineScan(bpt::ptree::value_type const &path_node);
+    phys::PhysicsEngine::LineScanPath readLineScanPath(bpt::ptree::value_type const &path_node);
     
 
     // VARS
