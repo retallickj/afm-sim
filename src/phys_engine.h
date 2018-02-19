@@ -56,7 +56,7 @@ namespace phys{
     struct LineScanPath {
       int path_id;  // the scan_id in case there were multiple scans
       // TODO offset of db_locs from physloc
-      std::vector<std::pair<int,int>> db_locs_enc;   // DB locations encountered in angstrom
+      std::vector<std::pair<float,float>> db_locs_enc;   // DB locations encountered in angstrom
       std::vector<std::string> results;   // results of line scans
     };
 
@@ -65,6 +65,9 @@ namespace phys{
     std::vector<std::tuple<float,float,float>> fixed_charges; // location of fixed charges
     boost::circular_buffer<std::vector<int>> db_charges;
     std::vector<LineScanPath> line_scan_paths;
+
+    // handy functions
+    std::string float2StringPrecision(float number, int decimal_places);
 
   private:
     std::string eng_name;     // name of this physics engine

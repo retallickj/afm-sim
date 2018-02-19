@@ -93,8 +93,8 @@ bpt::ptree PhysicsEngine::xmlNodePhysloc()
   bpt::ptree node_physloc;
   for (auto dbl : db_locs) {
     bpt::ptree node_dbdot;
-    node_dbdot.put("<xmlattr>.x", std::to_string(dbl.first).c_str());
-    node_dbdot.put("<xmlattr>.y", std::to_string(dbl.second).c_str());
+    node_dbdot.put("<xmlattr>.x", float2StringPrecision(dbl.first, 2));
+    node_dbdot.put("<xmlattr>.y", float2StringPrecision(dbl.second, 2));
     node_physloc.add_child("dbdot", node_dbdot);
   }
   return node_physloc;
@@ -122,10 +122,10 @@ bpt::ptree PhysicsEngine::xmlNodeLineScans()
     bpt::ptree node_dbs_encountered;
     bpt::ptree node_scan_results;
 
-    for (std::pair<int,int> db_loc : line_scan_path.db_locs_enc) {
+    for (std::pair<float,float> db_loc : line_scan_path.db_locs_enc) {
       bpt::ptree node_db;
-      node_db.put("<xmlattr>.x", std::to_string(db_loc.first).c_str());
-      node_db.put("<xmlattr>.y", std::to_string(db_loc.second).c_str());
+      node_db.put("<xmlattr>.x", float2StringPrecision(db_loc.first, 2));
+      node_db.put("<xmlattr>.y", float2StringPrecision(db_loc.second, 2));
       node_dbs_encountered.add_child("db", node_db);
     }
 
@@ -150,5 +150,13 @@ std::string PhysicsEngine::formattedTime(const std::string &time_format) const
   std::stringstream ss;
   ss.imbue(std::locale(std::locale::classic(), facet));
   ss << curr_time;
+  return ss.str();
+}
+
+
+std::string PhysicsEngine::float2StringPrecision(float number, int decimal_places)
+{
+  std::stringstream ss;
+  ss << std::fixed << std::setprecision(decimal_places) << number;
   return ss.str();
 }

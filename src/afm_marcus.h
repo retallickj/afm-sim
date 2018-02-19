@@ -30,6 +30,10 @@ namespace phys {
     // Import the simulation result from the script, returns true if the read was successful
     bool importResultsFromScript(const std::string &script_result_path);
     phys::PhysicsEngine::LineScanPath readLineScanPath(bpt::ptree::value_type const &path_node);
+
+    // Convert between angstrom (x,y) and lattice unit (x,y,b)
+    std::tuple<int,int,int> angstrom2LatticeUnit(float x, float y);
+    std::pair<float,float> latticeUnit2Angstrom(int x, int y, int b);
     
 
     // VARS

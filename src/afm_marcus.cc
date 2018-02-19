@@ -99,11 +99,14 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
     }
     std::shared_ptr<Problem::AFMPath> sim_afm_path = problem.getAFMPath(sim_afm_path_ind);
     for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
-      int x_lu = round(afmnode->x / 3.84);
+      /*int x_lu = round(afmnode->x / 3.84);
       int y_lu = round(afmnode->y / 7.68);
       int b = round(fmod(afmnode->y, 7.68) / 2.4);
       float z = afmnode->z;
-      afm_node_locs.push_back(std::make_tuple(x_lu, y_lu, b, z));
+      afm_node_locs.push_back(std::make_tuple(x_lu, y_lu, b, z));*/
+      std::tuple<int,int,int> twod_loc_lu = angstrom2LatticeUnit(afmnode->x, afmnode->y);
+      std::tuple<int,int,int,float> threed_loc_lu = std::tuple_cat(twod_loc_lu, std::make_tuple(afmnode->z));
+      afm_node_locs.push_back(threed_loc_lu);
     }
   }
 
@@ -126,7 +129,7 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   }
 
   // dbs
-  for (std::pair<int,int> dbl : db_locs_lu) {
+  for (std::tuple<int,int,int> dbl : db_locs_lu) {
     bpt::ptree node_dbdot;
     node_dbdot.put("<xmlattr>.x", std::to_string(std::get<0>(dbl)).c_str());
     node_dbdot.put("<xmlattr>.y", std::to_string(std::get<1>(dbl)).c_str());
@@ -189,10 +192,12 @@ phys::PhysicsEngine::LineScanPath AFMMarcus::readLineScanPath(bpt::ptree::value_
 
   // read db encoutered by this AFM path
   for (bpt::ptree::value_type const &db_node : path_node.second.get_child("dbs_encountered")) {
-    line_scan.db_locs_enc.push_back(std::make_pair(
+    std::pair<float,float> db_physloc = latticeUnit2Angstrom(
           db_node.second.get<int>("<xmlattr>.x"),
-          db_node.second.get<int>("<xmlattr>.y")
-        )); // TODO convert db loc to angstrom and add offset
+          db_node.second.get<int>("<xmlattr>.y"),
+          db_node.second.get<int>("<xmlattr>.b")
+        );
+    line_scan.db_locs_enc.push_back(db_physloc);
     std::cout << "read db x=" << line_scan.db_locs_enc.back().first << 
         ", y=" << line_scan.db_locs_enc.back().second << std::endl;
   }
@@ -205,4 +210,21 @@ phys::PhysicsEngine::LineScanPath AFMMarcus::readLineScanPath(bpt::ptree::value_
   }
 
   return line_scan;
+}
+
+
+std::tuple<int,int,int> AFMMarcus::angstrom2LatticeUnit(float x, float y)
+{
+  int x_lu = round(x / 3.84);
+  int y_lu = round(y / 7.68);
+  int b = round(fmod(y, 7.68) / 2.4);
+  return std::make_tuple(x_lu, y_lu, b);
+}
+
+std::pair<float,float> AFMMarcus::latticeUnit2Angstrom(int x_lu, int y_lu, int b)
+{
+  float x = static_cast<float>(x_lu) * 3.84;
+  float y = static_cast<float>(y_lu) * 7.68 + static_cast<float>(b) * 2.4;
+  std::cout << "lu2ang (" << x_lu << "," << y_lu << "," << b << ") to (" << x << "," << y << ")" << std::endl;
+  return std::make_pair(x, y);
 }

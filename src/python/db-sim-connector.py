@@ -107,7 +107,7 @@ class DBSimConnector:
         # the DBs encountered by this AFM path
         node_dbs_encountered = ET.SubElement(node_path, "dbs_encountered")
         for db in self.dbs: # TODO this isn't actually the encountered dbs, update
-            ET.SubElement(node_dbs_encountered, "db", x=str(db[0]), y=str(db[1])).text = ""
+            ET.SubElement(node_dbs_encountered, "db", x=str(db[0]), y=str(db[1]), b=str(db[2])).text = ""
 
         # line scan results by this AFM path
         node_scan_results = ET.SubElement(node_path, "scan_results")
