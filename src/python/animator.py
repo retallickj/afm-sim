@@ -201,7 +201,7 @@ if __name__ == '__main__':
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
     model = HoppingModel(device, model='marcus')
-    model.setElectronCount(7)
+    model.setElectronCount(5)
 
     app = QApplication(sys.argv)
     animator = HoppingAnimator(model)

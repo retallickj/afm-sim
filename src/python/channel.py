@@ -22,12 +22,12 @@ class Channel(object):
     # useful lambdas
     rebirth = np.random.exponential # reset for hop-on lifetime
 
-    def __init__(self, kt):
-        '''Initialise a Channel instance with the given thermal energy'''
-        self.kt = kt
+    def __init__(self):
+        '''Initialise a Channel'''
 
-    def setup(self, X, Y):
-        '''Set up channel for the given DB positions'''
+    def setup(self, X, Y, kt):
+        '''Set up channel for the given DB positions and thermal energy'''
+        self.kt = kt
         self.X, self.Y = X, Y
         self.lifetime = self.rebirth()
         self.tickrate = 1.
@@ -73,7 +73,7 @@ class Bulk(Channel):
     nu_off  = 1.    # maximum rate of hops from the bulk
 
     # energy offsets
-    mu_on   = .2    # local energy at which electrons start hopping onto Bulk
+    mu_on   = .3    # local energy at which electrons start hopping onto Bulk
     mu_off  = .2    # local energy at which electrons start hopping from Bulk
 
     alpha   = 1.e3  # damping factor for kt, higher means sharper transition

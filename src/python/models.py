@@ -20,16 +20,17 @@ class BaseModel(object):
     # shared physical constants
     hbar    = 6.582e-16     # eV.s
 
-    def __init__(self, kt):
-        '''Initialise a hopping rate model with the given thermal energy'''
-        self.kt = kt
+    def __init__(self):
+        '''Initialise a hopping rate model'''
+        pass
 
-    def setup(self, X, Y):
+    def setup(self, X, Y, kt):
         '''Setup the model for the given DB arrangement
 
         inputs:
             X  : matrix of x positions, angstroms
             Y  : matrix of y positions, angstroms
+            kt : thermal energy of surface, eV
         '''
         raise NotImplementedError()
 
@@ -55,11 +56,11 @@ class VRHModel(BaseModel):
     r0      = 1.e11   # scaling prefactor for rates
     lamb    = 0.01      # self-trapping energy, eV
 
-    def __init__(self, kt):
-        super(VRHModel, self).__init__(kt)
-        self.beta = 1./self.kt
+    def __init__(self):
+        super(VRHModel, self).__init__()
 
-    def setup(self, X, Y):
+    def setup(self, X, Y, kt):
+        self.beta = 1./kt
         dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
         R = np.sqrt(dX**2+dY**2)
         self.T0 = self.r0*np.exp(-2*self.alph*R)
@@ -80,13 +81,13 @@ class MarcusModel(BaseModel):
     t0      = 1e-3      # prefactor
     alph    = 1e-2      # inverse attenuation length, 1/angstroms
 
-    def __init__(self, kt):
-        super(MarcusModel, self).__init__(kt)
-        self.lbeta = 1./(self.lamb*self.kt)
+    def __init__(self):
+        super(MarcusModel, self).__init__()
 
-    # inheritted methods
+    # inherited methods
 
-    def setup(self, X, Y):
+    def setup(self, X, Y, kt):
+        self.lbeta = 1./(self.lamb*kt)
         dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
         R = np.sqrt(dX**2+dY**2)
         self.Tp = np.abs(self.tint(R))**2/self.hbar*np.sqrt(self.lbeta*np.pi)

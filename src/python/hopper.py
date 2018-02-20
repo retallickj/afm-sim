@@ -44,16 +44,16 @@ class HoppingModel:
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
 
-    def __init__(self, X, model='marcus', **kwargs):
+    def __init__(self, pos, model='marcus', **kwargs):
         '''Construct a HoppingModel for a DB arrangement with the given x and
         optional y coordinates in unit of the lattice vectors. For now, assume
         only the top site of each dimer pair can be a DB.
 
         inputs:
-            X       : Iterable of DB locations. Each elements of X should be a
+            pos     : Iterable of DB locations. Each elements of pos should be a
                       3-tuple (x,y,b) with x and y the dimer column and row and
                       b true if the DB is at the bottom of the dimer pair. If
-                      X[i] is an integer x, it gets mapped to (x,0,0).
+                      pos[i] is an integer x, it gets mapped to (x,0,0).
             model   : Type of hopping rate model
 
         optional key-val arguments:
@@ -61,7 +61,7 @@ class HoppingModel:
         '''
 
         # format and store db locations and number
-        self._parseX(X)
+        self._parseX(pos)
 
         self.charge = np.zeros([self.N,], dtype=int)    # charges at each db
 
@@ -84,10 +84,10 @@ class HoppingModel:
         if model not in models:
             raise KeyError('Invalid model type. Choose from [{0}]'.format(
                                 ', '.join(models.keys())))
-        self.model = models[model](self.kb*self.T)
+        self.model = models[model]()
         self.channels = []
 
-        self.addChannel(Bulk(self.kb*self.T))
+        self.addChannel(Bulk())
 
     def setElectronCount(self, n):
         '''Set the number of electrons in the system'''
@@ -145,10 +145,10 @@ class HoppingModel:
         self.charge[self.state[self.Nel:]]=0
 
         # setup model and channels
-        X, Y = self.a*self.X, self.b*self.Y
-        self.model.setup(X, Y)
+        X, Y, kt  = self.a*self.X, self.b*self.Y, self.kb*self.T
+        self.model.setup(X, Y, kt)
         for channel in self.channels:
-            channel.setup(X, Y)
+            channel.setup(X, Y, kt)
 
         self.update()
 
