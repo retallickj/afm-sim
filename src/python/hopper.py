@@ -12,8 +12,8 @@ __version__     = '1.2'
 __date__        = '2018-02-14'  # last update
 
 import numpy as np
-from models import models
-from channel import Bulk
+from model import models as Models
+from channel import Channel, channels as Channels
 
 class HoppingModel:
     '''Time dependent surface hopping model for charge transfer in DBs'''
@@ -81,13 +81,14 @@ class HoppingModel:
         self.Nel = int(round(self.N*self.fixed_rho))
 
         # create model, setup on initialisation
-        if model not in models:
+        if model not in Models:
             raise KeyError('Invalid model type. Choose from [{0}]'.format(
-                                ', '.join(models.keys())))
-        self.model = models[model]()
+                                ', '.join(Models.keys())))
+        self.model = Models[model]()
         self.channels = []
 
-        self.addChannel(Bulk())
+        # TODO: remove... leave to user to include bulk
+        self.addChannel('bulk')
 
     def setElectronCount(self, n):
         '''Set the number of electrons in the system'''
@@ -119,8 +120,20 @@ class HoppingModel:
         self.bias = F*(v[0]*self.a*self.X+v[1]*self.b*self.Y)
 
     def addChannel(self, channel):
-        '''Add a Channel instance to the HoppingModel'''
-        self.channels.append(channel)
+        '''Add a Channel instance to the HoppingModel.
+
+        inputs:
+            channel : Channel to include. Must either be a Channel instance or
+                     a string indicating an accepted channel type in Channels.
+        '''
+
+        if isinstance(channel, str):
+            if channel not in Channels:
+                raise KeyError('Invalid channel type. Choose from [{0}]'.format(
+                    ', '.join(k for k in Channels if k != 'base')))
+            self.channels.append(Channels[channel]())
+        elif isinstance(channel, Channel):
+            self.channels.append(channel)
 
 
     # FUNCTIONAL METHODS
