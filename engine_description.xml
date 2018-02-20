@@ -2,8 +2,9 @@
 <physeng>
     <name>AFMMarcus</name>
     <version>0.1</version>
-    <interpreter>python</interpreter> <!-- used for calling a script with python, java, etc. Leave blank otherwise -->
-    <bin_path>src/python/demo.py</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
+    <interpreter></interpreter> <!-- used for calling a script with python, java, etc. Leave blank otherwise -->
+    <bin_path>afmmarcus</bin_path> <!-- path to binary (standalone) or script (read by interpreter), relative to the folder containing engine_description.xml -->
+    <linked_script_path>db-sim-connector.py</linked_script_path> <!-- if the binary is a connector that calls another script, indicate the script path here, relative to the folder containing engine_description.xml -->
     <sim_params>
         <param gui_object_type="QLineEdit" gui_object_name="le_scan_type">scan_type</param>
         <param gui_object_type="QLineEdit" gui_object_name="le_write_strength">write_strength</param>

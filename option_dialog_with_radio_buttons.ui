@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>460</height>
+    <height>300</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,12 +19,46 @@
      <item>
       <widget class="QLabel" name="label_scan_type">
        <property name="text">
-        <string>Scan type (-1,0,1)</string>
+        <string>Scan type</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="le_scan_type"/>
+      <layout class="QVBoxLayout" name="rb_scan_type_vl">
+       <item>
+        <widget class="QRadioButton" name="rb_scan_type_rr">
+         <property name="text">
+          <string>Read (right), Read (left)</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">rbg_scan_type</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="rb_scan_type_wr">
+         <property name="text">
+          <string>Write (right), Read (left)</string>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">rbg_scan_type</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="rb_scan_type_rw">
+         <property name="text">
+          <string>Read (right), Write (left)</string>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">rbg_scan_type</string>
+         </attribute>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </item>
