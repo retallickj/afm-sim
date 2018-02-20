@@ -89,7 +89,7 @@ Where $t_{ij}$ is the overlap integral between the DB bound states; $\lambda$ is
 
 \paragraph{Implementation}
 
-The MarcusModel class takes an arrangement of DBs and simulates the charge dynamics over time. Marcus theory is used to determine the intervals between hopping events and which DBs are involved in each hop. Currently, the overlap integrals are approximated by a $\sfrac{1}{r}$ falloff with DB distance, a good choice of $\lambda$ for matching the experimental results was found to be 40 meV (close to the $\sim 100 meV$ discussed), and each DB can be exposed to an arbitrary external electric potential such as from the tip. 
+The \textit{MarcusModel} class takes an arrangement of DBs and simulates the charge dynamics over time. Marcus theory is used to determine the intervals between hopping events and which DBs are involved in each hop. Currently, the overlap integrals are approximated by a $\sfrac{1}{r}$ falloff with DB distance, a good choice of $\lambda$ for matching the experimental results was found to be 40 meV (close to the $\sim$ 100 meV discussed), and each DB can be exposed to an arbitrary external electric potential such as from the tip. 
 
 
 
@@ -100,13 +100,13 @@ The MarcusModel class takes an arrangement of DBs and simulates the charge dynam
 % Implementation
 \section{AFM Line Scan Simulation} \label{sec:simulation}
 
-To attempt to reproduce the experimental AFM line scans, a AFMLine class was implemented which simulates the action of scanning the AFM over the DBs in the MarcusModel. The line scan is described by the type of scan (read-read, write-right, write-left), the scan rate, the amount of padding on either side of the line, and the number of scans. The class determines the list of upcoming DBs and the times before each measurement and queries the MarcusModel class for the relevant charge state of the DBs. In write mode, the tip is primitively modeled by decreasing the energy of the next DB by a set amount (10 meV) when the tip is within a set distance (0.2 nm).
+To attempt to reproduce the experimental AFM line scans, an \textit{AFMLine} class was implemented which simulates the action of scanning the AFM over the DBs in the \textit{MarcusModel}. The line scan is described by the type of scan (read-read, write-right, write-left), the scan rate, the amount of padding on either side of the line, and the number of scans. The class determines the list of upcoming DBs and the times before each measurement and queries the \textit{MarcusModel} class for the relevant charge state of the DBs. In write mode, the tip is primitively modeled by decreasing the energy of the next DB by a set amount (10 meV) when the tip is within a set distance (0.2 nm).
 
 \section{Current Work}
 
 \begin{itemize}
  \item The tip is a result of a crude parameterization to match some of the results and is not very physically consistent, Lucian's model should be able to fill this gap.
- \item The number of charges is currently fixed so inclusion of a mechanism for electrons to hop in/out of the surface will need to be added in future if the surface population can vary.
+ \item The number of charges is currently fixed so inclusion of a mechanism for electrons to hop in/out of the surface will need to be added in the future if the surface population can vary.
 \end{itemize}
 
 
