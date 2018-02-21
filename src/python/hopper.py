@@ -39,7 +39,7 @@ class HoppingModel:
     # general settings
     fixed_pop = False    # fixed number of electrons
     free_rho = 0.5       # filling density if not fixed_pop (Nel = round(N*free_rho))
-    burn_count = 10      # number of burns hops per db
+    burn_count = 20      # number of burns hops per db
 
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes

@@ -27,7 +27,7 @@ bool AFMMarcus::runSim()
   // check if script exists at script_path
   // TODO
 
-  // determine the paths for exporting the minimized problem to the script, and 
+  // determine the paths for exporting the minimized problem to the script, and
   // importing the results from the script
   // FUTURE move all these temp stuff over to phys_engine
   std::string tmp_dir, script_problem_path, script_result_path;
@@ -51,7 +51,7 @@ bool AFMMarcus::runSim()
   if (!exportProblemForScript(script_problem_path))
     return false;
 
-  // setup command for invoking python script with the input and output file paths as 
+  // setup command for invoking python script with the input and output file paths as
   // arguments. NOTE might not work on Windows, look into PyRun_SimpleFile if necessary.
   std::string command = "python " + scriptPath() + " ";
   command += "-i " + script_problem_path + " "; // problem path for the script to read
@@ -83,11 +83,9 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
 
   // convert db locations to lattice unit
   for (std::pair<float,float> db_loc : db_locs) {
-    int x_lu = round(db_loc.first / 3.84);
-    int y_lu = round(db_loc.second / 7.68);
-    int b = round(fmod(db_loc.second, 7.68) / 2.4); // 0 = top row, 1 = bottom row
-    db_locs_lu.push_back(std::make_tuple(x_lu, y_lu,b));
-    std::cout << "DB in Lattice Unit: x=" << x_lu << ", y=" << y_lu << ", b=" << b << std::endl;
+    std::tuple<int,int,int> twod_loc_lu = angstrom2LatticeUnit(db_loc.first, db_loc.second);
+    db_locs_lu.push_back(twod_loc_lu);
+    //std::cout << "DB in Lattice Unit: x=" << x_lu << ", y=" << y_lu << ", b=" << b << std::endl;
   }
 
   // convert afm nodes to lattice unit
@@ -99,11 +97,6 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
     }
     std::shared_ptr<Problem::AFMPath> sim_afm_path = problem.getAFMPath(sim_afm_path_ind);
     for (std::shared_ptr<Problem::AFMNode> afmnode : sim_afm_path->nodes) {
-      /*int x_lu = round(afmnode->x / 3.84);
-      int y_lu = round(afmnode->y / 7.68);
-      int b = round(fmod(afmnode->y, 7.68) / 2.4);
-      float z = afmnode->z;
-      afm_node_locs.push_back(std::make_tuple(x_lu, y_lu, b, z));*/
       std::tuple<int,int,int> twod_loc_lu = angstrom2LatticeUnit(afmnode->x, afmnode->y);
       std::tuple<int,int,int,float> threed_loc_lu = std::tuple_cat(twod_loc_lu, std::make_tuple(afmnode->z));
       afm_node_locs.push_back(threed_loc_lu);
@@ -123,7 +116,7 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   bpt::ptree node_dbs;      // <dbs>
   bpt::ptree node_afmnodes; // <afm_nodes>
 
-  
+
   for (std::string param_key : problem.getParameterKeys()) {
     node_params.put(param_key, problem.getParameter(param_key));
   }
@@ -154,7 +147,7 @@ bool AFMMarcus::exportProblemForScript(const std::string &script_problem_path)
   tree.add_child("min_problem", node_root);
 
   // write to file
-  bpt::write_xml(script_problem_path, tree, std::locale(), 
+  bpt::write_xml(script_problem_path, tree, std::locale(),
                     bpt::xml_writer_make_settings<std::string>(' ',4));
 
   std::cout << "Finished writing minimized problem" << std::endl;
@@ -198,12 +191,12 @@ phys::PhysicsEngine::LineScanPath AFMMarcus::readLineScanPath(bpt::ptree::value_
           db_node.second.get<int>("<xmlattr>.b")
         );
     line_scan.db_locs_enc.push_back(db_physloc);
-    std::cout << "read db x=" << line_scan.db_locs_enc.back().first << 
+    std::cout << "read db x=" << line_scan.db_locs_enc.back().first <<
         ", y=" << line_scan.db_locs_enc.back().second << std::endl;
   }
 
   // read line scan results
-  for (bpt::ptree::value_type const &line_scan_node : 
+  for (bpt::ptree::value_type const &line_scan_node :
           path_node.second.get_child("scan_results")) {
     line_scan.results.push_back(line_scan_node.second.data());
     std::cout << "line scan result " << line_scan.results.back() << std::endl;
@@ -217,7 +210,10 @@ std::tuple<int,int,int> AFMMarcus::angstrom2LatticeUnit(float x, float y)
 {
   int x_lu = round(x / 3.84);
   int y_lu = round(y / 7.68);
-  int b = round(fmod(y, 7.68) / 2.4);
+  int b = round((y - 7.68*y_lu) / 2.4);
+  //int b = round(fmod(y, 7.68) / 2.4);
+  std::cout << "ang2lu (" << x << "," << y << ") to (" << x_lu << "," << y_lu <<
+      "," << b << ")" << std::endl;
   return std::make_tuple(x_lu, y_lu, b);
 }
 

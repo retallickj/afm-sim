@@ -73,7 +73,7 @@ class Bulk(Channel):
     nu_off  = 1.    # maximum rate of hops from the bulk
 
     # energy offsets
-    mu_on   = .15    # local energy at which electrons start hopping onto Bulk
+    mu_on   = .17    # local energy at which electrons start hopping onto Bulk
     mu_off  = .15    # local energy at which electrons start hopping from Bulk
 
     alpha   = 1.e3  # damping factor for kt, higher means sharper transition
