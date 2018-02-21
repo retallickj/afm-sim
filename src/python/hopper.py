@@ -37,9 +37,9 @@ class HoppingModel:
     c = 2.25    # dimer pair separation, angstroms
 
     # general settings
-    fixed_pop = True        # fixed number of electrons
-    fixed_rho = 0.5         # filling density if fixed_pop (Nel = round(N*fixed_rho))
-    burn_count = 10         # number of burns hops per db
+    fixed_pop = False    # fixed number of electrons
+    free_rho = 0.5       # filling density if not fixed_pop (Nel = round(N*free_rho))
+    burn_count = 10      # number of burns hops per db
 
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
@@ -78,7 +78,7 @@ class HoppingModel:
         np.fill_diagonal(self.V,0)
 
         # by default, use
-        self.Nel = int(round(self.N*self.fixed_rho))
+        self.Nel = int(round(self.N*self.free_rho))
 
         # create model, setup on initialisation
         if model not in Models:
@@ -90,10 +90,12 @@ class HoppingModel:
         # TODO: remove... leave to user to include bulk
         self.addChannel('bulk')
 
-    def setElectronCount(self, n):
-        '''Set the number of electrons in the system'''
+    def fixElectronCount(self, n):
+        '''Fix the number of electrons in the system. Use n<0 to re-enable
+        automatic population mechanism.'''
 
         if n<0:
+            self.Nel = int(round(self.N*self.free_rho))
             self.fixed_pop = False
         else:
             assert n <= self.N, 'Invalid number of electrons'
@@ -192,16 +194,26 @@ class HoppingModel:
         self.beff = beff    # store for dE on channel hop
         self.trates = self.model.rates(self.dG, occ, nocc)
         self.tickrates = np.sum(self.trates, axis=1)
-        if self.channels:
+        if self.channels and not self.fixed_pop:
             self.crates = np.array([channel.rates() for channel in self.channels]).T
             self.tickrates += np.sum(self.crates, axis=1)
 
     def peek(self):
         '''Return the time before the next tunneling event and the index of the
-        event'''
+        event:
+
+        output:
+            dt  : time to next hopping event, s
+            ind : index of event: if ind < self.Nel the electron at state[ind]
+                 hops, otherwise an electron hops onto the surface from
+                 channel (ind-self.Nel).
+        '''
 
         occ = self.state[:self.Nel]
         tdeltas = self.lifetimes[occ]/(self.tickrates+self.MTR)
+        if self.channels and not self.fixed_pop:
+            cdeltas = [channel.peek() for channel in self.channels]
+            tdeltas = np.hstack([tdeltas, cdeltas])
         ind = np.argmin(tdeltas)
 
         return tdeltas[ind], ind
@@ -213,8 +225,8 @@ class HoppingModel:
 
         # determine target
         P, targets = self.trates[ind], list(range(self.N-self.Nel))
-        if self.channels:
-            P = np.hstack([self.trates[ind], [np.sum(self.crates[ind])]])
+        if self.channels and not self.fixed_pop:
+            P = np.hstack([P, [np.sum(self.crates[ind])]])
             targets.append(-1)
         t_ind = np.random.choice(targets,p=P/P.sum())
 
@@ -225,6 +237,7 @@ class HoppingModel:
             self._surface_hop(t_ind, ind)
 
         self.update()
+
 
     def burn(self, nhops):
         '''Burns through the given number of hopping events'''
@@ -241,7 +254,10 @@ class HoppingModel:
             mtick = min(dt, tick)
             self.lifetimes[self.state[:self.Nel]] -= mtick*self.tickrates
             if tick<=dt:
-                self.hop(ind)
+                if ind < self.Nel:
+                    self.hop(ind)
+                else:
+                    self._channel_pop(ind-self.Nel)
             dt -= mtick
 
 
@@ -275,10 +291,21 @@ class HoppingModel:
         '''Hop the electron given off the surface to some channel'''
 
         src = self.state[ind]
-        self.energy +- self.beff[src]
+        self.energy += self.beff[src]
         self.charge[src] = 0
         self.state[ind], self.state[self.Nel-1] = self.state[self.Nel-1], self.state[ind]
         self.Nel -= 1
+
+    def _channel_pop(self, cind):
+        '''Hop an electron from the give channel onto the surface'''
+        ind = self.channels[cind].pop()+self.Nel
+        target = self.state[ind]
+        self.energy -= self.beff[target]
+        self.charge[target] = 1
+        self.lifetimes[target] = self.rebirth()
+        self.state[self.Nel], self.state[ind] = self.state[ind], self.state[self.Nel]
+        self.Nel += 1
+        self.update()
 
     def _surface_hop(self, t_ind, ind):
         '''Hop the elctron given by ind to the empty db given by t_ind'''

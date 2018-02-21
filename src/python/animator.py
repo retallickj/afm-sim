@@ -189,19 +189,24 @@ class HoppingAnimator(QGraphicsView):
 if __name__ == '__main__':
 
     import sys
+    sys.setrecursionlimit(50)
 
-    line = [1, 8, 10, 15, 17, 24]
+    line = [8, 10, 15, 17, 22, 24, 29, 31, 36, 38]
+    #line.insert(0, line[0]-7)
+    line.append(line[-1]+7)
+
     _or = [(0,0,0),(2,1,0),(6,1,0),(8,0,0),(4,3,0),(4,4,1),(4,6,0)]
     _or.append((-2,-1,0))
     _or.append((10,-1,0))
 
-    device = _or
+    device = line
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
     model = HoppingModel(device, model='marcus')
-    model.setElectronCount(6)
+    # model.fixElectronCount(5)
+    #model.addChannel('bulk')
 
     app = QApplication(sys.argv)
     animator = HoppingAnimator(model)
