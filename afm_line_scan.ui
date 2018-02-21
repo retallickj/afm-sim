@@ -15,6 +15,27 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <layout class="QHBoxLayout" name="simulation_type_hl">
+     <item>
+      <widget class="QLabel" name="label_simulation_type">
+       <property name="text">
+        <string>Simulation Type</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_simulation_type">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>line_scan</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="scan_type_hl">
      <item>
       <widget class="QLabel" name="label_scan_type">
@@ -24,7 +45,29 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="le_scan_type"/>
+      <widget class="QLineEdit" name="le_scan_type">
+       <property name="text">
+        <string>0</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="hopping_model_hl">
+     <item>
+      <widget class="QLabel" name="label_hopping_model">
+       <property name="text">
+        <string>Hopping Model</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_hopping_model">
+       <property name="text">
+        <string>marcus</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -74,7 +117,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="le_num_electrons"/>
+      <widget class="QLineEdit" name="le_num_electrons">
+       <property name="text">
+        <string>-1</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QCheckBox" name="cb_num_electrons_ratio">
@@ -157,7 +204,4 @@
  </widget>
  <resources/>
  <connections/>
- <buttongroups>
-  <buttongroup name="rbg_scan_type"/>
- </buttongroups>
 </ui>
