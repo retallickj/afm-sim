@@ -1,6 +1,19 @@
-import numpy as np
+#!/usr/bin/env python
+# encoding: utf-8
 
-from collections import namedtuple
+'''
+Simulator for the non-equilibrium surface dynamics of charges in QSi's DB
+arrangements
+'''
+
+__author__      = 'Jake Retallick'
+__copyright__   = 'MIT License'
+__version__     = '1.2'
+__date__        = '2018-02-13'  # last updates
+
+raise DeprecationWarning('Use the more generalized HoppingModel in hopper.py')
+
+import numpy as np
 
 class MarcusModel:
     '''Time dependent Marcus Theory based model for charge transfer in surface
@@ -19,7 +32,7 @@ class MarcusModel:
 
     # somewhat magic numbers
     debye   = 50            # debye screening length, angstroms
-    lamb    = 0.04           # reorganization energy, eV
+    lamb    = 0.04          # reorganization energy, eV
     t0      = 1e-2          # staying integral, eV
     t1      = 5e-4          # tunneling integral at lattice vector a, eV
     tpow    = 1             # tunneling integral distance fall-off power
@@ -143,14 +156,7 @@ class MarcusModel:
         beff = self.bias+self.dbias-np.dot(self.V, self.charge)
 
         # update parameters.... magic math
-        #self.dG = beff[occ] - beff[nocc].reshape(-1,1)-self.V[occ,:][:,nocc]
-
-        # check dG
-        ddG = np.zeros([len(occ), len(nocc)])
-        for ind in range(self.Nel):
-            for tind in range(self.Nel, self.N):
-                ddG[ind, tind-self.Nel] = self.energyDelta(ind, tind)
-        self.dG = ddG
+        self.dG = beff[occ].reshape(-1,1) - beff[nocc] - self.V[occ,:][:,nocc]
 
         self.trates = self.Tp[occ,:][:,nocc]*np.exp(-(self.dG+self.lamb)**2/(4*self.lkt))
         self.tickrates = np.sum(self.trates, axis=1)
@@ -224,7 +230,7 @@ class MarcusModel:
     # helper functions
 
     def tint(self):
-        '''Compute the tunneling integral for the distance matrix'''
+        '''Compute the tunneling integrals for the distance matrix'''
 
         tij = self.t1/np.power(np.eye(self.N)+self.R/self.a, self.tpow)
         np.fill_diagonal(tij, self.t0)
