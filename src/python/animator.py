@@ -204,10 +204,10 @@ if __name__ == '__main__':
         for n in range(N):
             x0 = 10*n
             qca += [(x0,0,1), (x0+3,0,1), (x0,2,0), (x0+3,2,0)]
-        #qca.append((-4,0,1))
+        qca.append((-4,0,1))
         return qca
 
-    device = QCA(3)
+    device = QCA(7)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
