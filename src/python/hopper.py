@@ -18,6 +18,9 @@ from channel import Channel, channels as Channels
 from itertools import combinations, chain
 from collections import defaultdict
 
+from time import clock as tick
+import sys
+
 class HoppingModel:
     '''Time dependent surface hopping model for charge transfer in DBs'''
 
@@ -42,7 +45,9 @@ class HoppingModel:
     # general settings
     fixed_pop = False    # fixed number of electrons
     free_rho = 0.5       # filling density if not fixed_pop (Nel = round(N*free_rho))
-    burn_count = 10      # number of burns hops per db
+    burn_count = 0      # number of burns hops per db
+
+    enable_cohop = False      # enable cohopping
 
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
@@ -82,6 +87,8 @@ class HoppingModel:
 
         # by default, use
         self.Nel = int(round(self.N*self.free_rho))
+
+        self.vprint = print
 
         # create model, setup on initialisation
         if model not in Models:
@@ -178,7 +185,8 @@ class HoppingModel:
         self.lifetimes = np.array([self.rebirth() for _ in range(self.N)])
 
         # cohopping setup, cohop_lt[ij] is the lifetime of the electrons at DBs i,j
-        self.cohop_lt = {ij: self.rebirth() for ij in self.cohop_tickrates}
+        if self.enable_cohop:
+            self.cohop_lt = {ij: self.rebirth() for ij in self.cohop_tickrates}
 
         self.energy = self.computeEnergy()
 
@@ -192,6 +200,8 @@ class HoppingModel:
         '''Update the energy deltas, tunneling rates, and tick rates'''
 
         occ, nocc = self.state[:self.Nel], self.state[self.Nel:]
+
+        #t = tick()
 
         # TODO: include channel contributions to beff
         # effective bias at each location
@@ -210,18 +220,23 @@ class HoppingModel:
             self.crates = np.array([channel.rates() for channel in self.channels]).T
             self.tickrates += np.sum(self.crates, axis=1)
 
+        #t1, t = tick()-t, tick()
+
         # cohopping
-        self.cohop_rates = defaultdict(dict)        # hopping rate for each cohop
-        self.cohop_tickrates = defaultdict(dict)    # tickrate per electron pair
-        self.cohop_dG = defaultdict(dict)           # energy delta for each cohop
-        for ij in combinations(range(self.Nel), 2):
-            for kl in combinations(range(self.N-self.Nel), 2):
-                (i,j),(k,l) = ij, kl
-                sites = self.state[[i,j, self.Nel+k, self.Nel+l]]
-                dG = self._compute_cohop_dG(i,j,k,l, *sites)
-                self.cohop_rates[ij][kl] = self.model.cohopping_rate(dG,*sites)
-                self.cohop_dG[ij][kl] = dG
-            self.cohop_tickrates[ij] = sum(self.cohop_rates[ij].values())
+        if self.enable_cohop:
+            self.cohop_rates = defaultdict(dict)        # hopping rate for each cohop
+            self.cohop_tickrates = defaultdict(dict)    # tickrate per electron pair
+            self.cohop_dG = defaultdict(dict)           # energy delta for each cohop
+            for ij in combinations(range(self.Nel), 2):
+                for kl in combinations(range(self.N-self.Nel), 2):
+                    (i,j),(k,l) = ij, kl
+                    sites = self.state[[i,j, self.Nel+k, self.Nel+l]]
+                    dG = self._compute_cohop_dG(i,j,k,l, *sites)
+                    self.cohop_rates[ij][kl] = self.model.cohopping_rate(dG,*sites)
+                    self.cohop_dG[ij][kl] = dG
+                self.cohop_tickrates[ij] = sum(self.cohop_rates[ij].values())
+
+        #self.vprint('update :: hopping = {0:.3e} <::> cohop = {1:.3e}'.format(t1, tick()-t))
 
     def peek(self):
         '''Return the time before the next tunneling event and the index of the
@@ -236,10 +251,14 @@ class HoppingModel:
 
         occ = self.state[:self.Nel]
 
-        hop_times = self.lifetimes[occ]/(self.tickrates+self.MTR)
-        cohop_times = {ij: self.cohop_lt[ij]/(self.cohop_tickrates[ij]+self.MTR)
-                                                for ij in self.cohop_tickrates}
-        times = [enumerate(hop_times), cohop_times.items()]
+        times = []
+        times.append(enumerate(self.lifetimes[occ]/(self.tickrates+self.MTR)))
+        # optional cohopping
+        if self.enable_cohop:
+            cohop_times = {ij: self.cohop_lt[ij]/(self.cohop_tickrates[ij]+self.MTR)
+                                                    for ij in self.cohop_tickrates}
+            times.append(cohop_times.items())
+        # optional channel hopping
         if self.channels and not self.fixed_pop:
             ch_times = [channel.peek() for channel in self.channels]
             times.append(enumerate(ch_times, self.Nel))
@@ -260,8 +279,6 @@ class HoppingModel:
         self._surface_hop(ij[0],k)
         self._surface_hop(ij[1],l)
 
-        self.update()
-
 
     def hop(self, ind):
         '''Perform a hop with the given electron'''
@@ -281,14 +298,19 @@ class HoppingModel:
         else:
             self._surface_hop(ind, t_ind)
 
-        self.update()
-
 
     def burn(self, nhops):
         '''Burns through the given number of hopping events'''
 
+        # supress printing for burn
+        self.vprint, tprint = lambda *a, **k: None, self.vprint
+
         for n in range(nhops):
+            sys.stdout.write("\rBurning: {0:3.1f}%".format((n+1)*100./nhops))
+            sys.stdout.flush()
             self.run(self.peek()[0])
+
+        self.vprint = tprint
 
 
     def run(self, dt):
@@ -302,8 +324,9 @@ class HoppingModel:
             if self.channels and not self.fixed_pop:
                 for channel in self.channels:
                     channel.run(mtick)
-            for ij, tickrate in self.cohop_tickrates.items():
-                self.cohop_lt[ij] -= mtick*tickrate
+            if self.enable_cohop:
+                for ij, tickrate in self.cohop_tickrates.items():
+                    self.cohop_lt[ij] -= mtick*tickrate
             # hopping event handling
             if tick<=dt:
                 if isinstance(ind, tuple):
@@ -312,6 +335,7 @@ class HoppingModel:
                     self.hop(ind)
                 else:
                     self._channel_pop(ind-self.Nel)
+                self.update()
             dt -= mtick
 
 
@@ -352,10 +376,11 @@ class HoppingModel:
         self.Nel -= 1
 
         # forget all cohopping lifetimes relatted to self.Nel-1
-        for i in range(self.Nel):
-            ij = (i,self.Nel)
-            if ij in self.cohop_lt:
-                del self.cohop_lt[ij]
+        if self.enable_cohop:
+            for i in range(self.Nel):
+                ij = (i,self.Nel)
+                if ij in self.cohop_lt:
+                    del self.cohop_lt[ij]
 
     def _channel_pop(self, cind):
         '''Hop an electron from the give channel onto the surface'''
@@ -367,11 +392,11 @@ class HoppingModel:
         self.state[self.Nel], self.state[ind] = self.state[ind], self.state[self.Nel]
 
         # add on new set of cohopping lifetimes
-        for i in range(self.Nel):
-            self.cohop_lt[(i,self.Nel)] = self.rebirth()
+        if self.enable_cohop:
+            for i in range(self.Nel):
+                self.cohop_lt[(i,self.Nel)] = self.rebirth()
 
         self.Nel += 1
-        self.update()
 
     def _surface_hop(self, ind, t_ind):
         '''Hop the electron given by ind to the empty db given by t_ind'''
@@ -383,9 +408,10 @@ class HoppingModel:
         self.lifetimes[target] = self.rebirth()
 
         # reset all cohopping times involving ind
-        for ij in self.cohop_lt:
-            if ind in ij:
-                self.cohop_lt[ij]= self.rebirth()
+        if self.enable_cohop:
+            for ij in self.cohop_lt:
+                if ind in ij:
+                    self.cohop_lt[ij]= self.rebirth()
 
     def _compute_cohop_dG(self, i, j, k, l, si, sj, sk, sl):
         return self.dG[i,k]+self.dG[j,l] \
