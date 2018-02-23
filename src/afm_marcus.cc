@@ -53,7 +53,7 @@ bool AFMMarcus::runSim()
 
   // setup command for invoking python script with the input and output file paths as
   // arguments. NOTE might not work on Windows, look into PyRun_SimpleFile if necessary.
-  std::string command = "python " + scriptPath() + " ";
+  std::string command = "python3 " + scriptPath() + " ";
   command += "-i " + script_problem_path + " "; // problem path for the script to read
   command += "-o " + script_result_path;        // result path that the script writes to
 
