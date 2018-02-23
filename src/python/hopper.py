@@ -47,7 +47,7 @@ class HoppingModel:
     free_rho = 0.5       # filling density if not fixed_pop (Nel = round(N*free_rho))
     burn_count = 0      # number of burns hops per db
 
-    enable_cohop = False      # enable cohopping
+    enable_cohop = True      # enable cohopping
 
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
