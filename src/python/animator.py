@@ -199,7 +199,15 @@ if __name__ == '__main__':
     _or.append((-2,-1,0))
     _or.append((10,-1,0))
 
-    device = line
+    def QCA(N):
+        qca = []
+        for n in range(N):
+            x0 = 10*n
+            qca += [(x0,0,1), (x0+3,0,1), (x0,2,0), (x0+3,2,0)]
+        #qca.append((-4,0,1))
+        return qca
+
+    device = QCA(3)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
