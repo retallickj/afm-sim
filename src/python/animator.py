@@ -207,7 +207,7 @@ if __name__ == '__main__':
         #qca.append((-4,0,1))
         return qca
 
-    device = QCA(3)
+    device = QCA(5)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
