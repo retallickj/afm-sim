@@ -133,6 +133,10 @@ class HoppingAnimator(QGraphicsView):
         self.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
         self.setWindowTitle('Hopping Animator')
 
+        # Set Anchors
+        self.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.setResizeAnchor(QGraphicsView.NoAnchor)
+
     def _drawDBs(self):
         '''Draw all the DBs for the animator'''
 
@@ -206,8 +210,6 @@ class HoppingAnimator(QGraphicsView):
         item = self.itemAt(e.pos())
         if isinstance(item, DB) and item.bg:
             self.model.addCharge(item.x, item.y, pos=item.charged)
-
-
 
 
 class FieldSlider(QHBoxLayout):
@@ -311,13 +313,13 @@ class DockWidget(QDockWidget):
 
 
 
-
-
 class MainWindow(QMainWindow):
     ''' '''
 
     WINX = 1400     # window width
     WINY = 1000      # window height
+
+    ZOOM = .1
 
     def __init__(self, model, record=False, fps=30):
         ''' '''
@@ -373,6 +375,12 @@ class MainWindow(QMainWindow):
             self.dock.setVisible(not self.dock.isVisible())
         elif e.key() == Qt.Key_Space:
             self.animator.tick()
+        elif e.key() in [Qt.Key_Plus, Qt.Key_Equal]:
+            zfact = 1+self.ZOOM
+            self.animator.scale(zfact,zfact)
+        elif e.key() == Qt.Key_Minus:
+            zfact = 1-self.ZOOM
+            self.animator.scale(zfact, zfact)
 
 
 
