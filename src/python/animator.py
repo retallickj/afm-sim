@@ -14,7 +14,7 @@ import shutil, os
 import numpy as np
 from itertools import product
 
-from PyQt5.QtCore import (Qt, QTimer, QThread)
+from PyQt5.QtCore import (Qt, QTimer, QThread, pyqtSignal)
 from PyQt5.QtGui import (QPen, QBrush, QColor, QPainter, QImage)
 from PyQt5.QtWidgets import *
 
@@ -87,6 +87,8 @@ class HoppingAnimator(QGraphicsView):
 
     bgcol = QColor(29, 35, 56)  # background color
     record_dir = './.temp_rec/'
+
+    signal_recount = pyqtSignal()
 
     def __init__(self, model, record=False, fps=30):
         '''Initialise the HoppingAnimator instance for the given DB positions.
@@ -181,6 +183,8 @@ class HoppingAnimator(QGraphicsView):
 
         for i,c in enumerate(self.model.charge):
             self.dbs[i].setCharge(c)
+
+        self.signal_recount.emit()
 
         dt = self.model.peek()[0]
         self.model.run(dt)
@@ -325,7 +329,7 @@ class MainWindow(QMainWindow):
         self.model = model
         self.bulk = self.model.addChannel('bulk')
         self.animator = HoppingAnimator(model, record=record, fps=fps)
-        self.animator.scene.changed.connect(self.recountCharges)
+        self.animator.signal_recount.connect(self.recountCharges)
 
         self.initGUI()
         self.createDock()
