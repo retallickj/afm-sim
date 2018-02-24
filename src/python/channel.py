@@ -74,7 +74,7 @@ class Bulk(Channel):
 
     # energy offsets
     mu_on   = .17    # local energy at which electrons start hopping onto Bulk
-    mu_off  = .15    # local energy at which electrons start hopping from Bulk
+    mu_off  = mu_on  # local energy at which electrons start hopping from Bulk
 
     alpha   = 1.e3  # damping factor for kt, higher means sharper transition
 

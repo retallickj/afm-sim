@@ -97,9 +97,6 @@ class HoppingModel:
         self.model = Models[model]()
         self.channels = []
 
-        # TODO: remove... leave to user to include bulk
-        self.addChannel('bulk')
-
     def fixElectronCount(self, n):
         '''Fix the number of electrons in the system. Use n<0 to re-enable
         automatic population mechanism.'''
@@ -149,6 +146,7 @@ class HoppingModel:
         else:
             raise KeyError('Unrecognized Channel format: must be either a str \
                                 or Channel derived class')
+        return self.channels[-1]
 
 
     # FUNCTIONAL METHODS
@@ -354,6 +352,16 @@ class HoppingModel:
 
         inds = self.state[:self.Nel]
         return -np.sum((self.bias+self.dbias)[inds]) + .5*np.sum(self.V[inds,:][:,inds])
+
+    def addCharge(self, x, y, pos=True):
+        '''Add the potential contribution from a charge at location (x,y). If pos
+        is False, removes the influence of that charge'''
+
+        dX, dY = self.a*self.X - x, self.b*self.Y - y
+        R = np.sqrt(dX**2+dY**2)
+        V = self.Kc/R*np.exp(-R/self.debye)
+        self.bias -= V if pos else -V
+        self.update()
 
     def _parseX(self, X):
         '''Parse the DB location information'''

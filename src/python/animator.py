@@ -16,8 +16,7 @@ from itertools import product
 
 from PyQt5.QtCore import (Qt, QTimer, QThread)
 from PyQt5.QtGui import (QPen, QBrush, QColor, QPainter, QImage)
-from PyQt5.QtWidgets import (QApplication, QGraphicsView, QGraphicsScene,
-                             QGraphicsEllipseItem)
+from PyQt5.QtWidgets import *
 
 from hopper import HoppingModel
 
@@ -38,6 +37,8 @@ class DB(QGraphicsEllipseItem):
 
     pen     = QPen(Qt.white, 3)     # DB edge pen
     bgpen   = QPen(Qt.darkGray, 1, Qt.DotLine)
+
+    pfill   = QBrush(QColor("orange"))     # charged DB for fixed perturbers
     fill    = QBrush(Qt.green)      # charged DB fill color
     nofill  = QBrush(Qt.NoBrush)    # uncharged DB fill color
 
@@ -45,15 +46,28 @@ class DB(QGraphicsEllipseItem):
 
     def __init__(self, x, y, bg=False, parent=None):
         super(DB, self).__init__(_SF*x, _SF*y, self.D, self.D, parent=parent)
+        self.x, self.y = x, y
         self.setPen(self.bgpen if bg else self.pen)
         self.setCharge(False)
+        self.bg = bg
         if not bg:
             self.setZValue(1)
 
     def setCharge(self, charged):
         '''Set the charge state of the DB'''
+        self.charged = charged
+        if charged:
+            brush = self.pfill if self.bg else self.fill
+        else:
+            brush = self.nofill
 
-        self.setBrush(self.fill if charged else self.nofill)
+        self.setBrush(brush)
+
+    def mousePressEvent(self, e):
+        if self.bg:
+            self.setCharge(not self.charged)
+
+
 
 
 class HoppingAnimator(QGraphicsView):
@@ -112,7 +126,6 @@ class HoppingAnimator(QGraphicsView):
 
         self._drawDBs()
 
-        self.setGeometry(100, 100, self.WINX, self.WINY)
         self.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
         self.setWindowTitle('Hopping Animator')
 
@@ -171,7 +184,7 @@ class HoppingAnimator(QGraphicsView):
         self.model.run(dt)
 
         millis = int(self.rate*dt)
-        print(dt, millis)
+        #print(dt, millis)
         if millis>=1:
             self.timer = QTimer()
             self.timer.timeout.connect(self.tick)
@@ -179,11 +192,182 @@ class HoppingAnimator(QGraphicsView):
         else:
             self.tick()
 
+    def addFixedCharge(self, db):
+        '''Add a fixed charge on the given DB'''
+
+    def mousePressEvent(self, e):
+        super(HoppingAnimator, self).mousePressEvent(e)
+        item = self.itemAt(e.pos())
+        if isinstance(item, DB) and item.bg:
+            self.model.addCharge(item.x, item.y, pos=item.charged)
+
+
+
+
+class FieldSlider(QHBoxLayout):
+    '''Container for parameter selected by a QSlider'''
+
+    def __init__(self, txt, parent=None):
+        super(FieldSlider, self).__init__(parent)
+
+        self.txt = QLabel(txt)
+        self.out = QLabel()
+        self.fval = lambda n: n
+        self.func = lambda x: None
+
+        self.initGUI()
+
+    def initGUI(self):
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setTickInterval(1)
+        self.slider.valueChanged.connect(self.valueChanged)
+        self.slider.sliderReleased.connect(self.sliderReleased)
+
+        self.addWidget(self.txt, stretch=4)
+        self.addWidget(self.slider, stretch=40)
+        self.addWidget(self.out, stretch=4)
+
+    def setBounds(self, lo, hi, inc, val):
+
+        self.lo, self.hi, self.inc = lo, hi, inc
+        self.fval = lambda n: lo+n*self.inc
+        self.val = val
+
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(round((hi-lo)*1./inc))
+        self.slider.setValue(round((val-lo)/inc))
+
+    def setValue(self, val):
+        self.val = val
+        self.setValue(round((val-self.lo)/self.inc))
+
+    # event handling
+    def valueChanged(self):
+        self.val = self.fval(self.slider.value())
+        self.out.setText('{0:.3f}'.format(self.val))
+
+    def sliderReleased(self):
+        self.func(self.val)
+
+
+
+
+class FieldEdit(QHBoxLayout):
+    '''Container for parameter selected by a QLineEdit'''
+
+    def __init__(self, parent=None):
+        super(FieldEdit, self).__init__(parent)
+
+
+class DockWidget(QDockWidget):
+    ''' '''
+
+    WIDTH = 200
+
+    def __init__(self, parent=None):
+        super(DockWidget, self).__init__(parent)
+
+        self.initGUI()
+
+    def initGUI(self):
+
+        self.setMinimumWidth(self.WIDTH)
+        self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+
+        widget = QWidget(self)
+        self.vbox = QVBoxLayout(widget)
+        self.vbox.setAlignment(Qt.AlignTop)
+        self.setWidget(widget)
+
+        self.hide()
+
+    def addSlider(self, txt, lo, hi, inc, val, func):
+        '''Add a slider controlled parameter to the Dock Widget
+
+        inputs:
+            txt     : Label of the slider
+            lo      : Lowest value of the slider
+            hi      : Highest value of the slider
+            inc     : Increment between slider ticks
+            func    : When slider is updated to x, func(x) called
+        '''
+
+        slider = FieldSlider(txt)
+        slider.setBounds(lo, hi, inc, val)
+        slider.func = func
+
+        self.vbox.addLayout(slider)
+        return slider
+
+    def addWidget(self, widget, stretch=-1):
+        self.vbox.addWidget(widget, stretch=stretch)
+
+
+
+
+
+class MainWindow(QMainWindow):
+    ''' '''
+
+    WINX = 1400     # window width
+    WINY = 1000      # window height
+
+    def __init__(self, model, record=False, fps=30):
+        ''' '''
+        super(MainWindow, self).__init__()
+
+        self.record = record
+        self.fps = fps
+
+        self.model = model
+        self.bulk = self.model.addChannel('bulk')
+        self.animator = HoppingAnimator(model, record=record, fps=fps)
+        self.animator.scene.changed.connect(self.recountCharges)
+
+        self.initGUI()
+        self.createDock()
+
+        for thread in self.animator.threads:
+            thread.start()
+
+    def initGUI(self):
+        ''' '''
+
+        self.setGeometry(100, 100, self.WINX, self.WINY)
+        self.setCentralWidget(self.animator)
+
+    def createDock(self):
+        '''Create the dock widget for simulation options'''
+
+        self.dock = DockWidget(self)
+
+        self.ecount = QLabel()
+        self.dock.addWidget(self.ecount)
+        val, func = self.bulk.mu_on, lambda v: self.setBulkMu(v)
+        self.dock.addSlider("mu", 0, .25, .01, val, func)
+
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+
+    def setBulkMu(self, v):
+        self.bulk.mu_on = v
+        self.bulk.mu_off = v
+        self.animator.tick()
+
+    def recountCharges(self):
+        self.ecount.setText('Number of Electrons: {0}'.format(self.model.Nel))
+
     def keyPressEvent(self, e):
+
         if e.key() == Qt.Key_Q:
-            if self.recording:
-                self.compile()
+            if self.record:
+                self.animator.compile()
             self.close()
+        elif e.key() == Qt.Key_O:
+            self.dock.setVisible(not self.dock.isVisible())
+        elif e.key() == Qt.Key_Space:
+            self.animator.tick()
+
 
 
 if __name__ == '__main__':
@@ -207,7 +391,7 @@ if __name__ == '__main__':
         qca.append((-4,0,1))
         return qca
 
-    device = QCA(7)
+    device = QCA(2)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
@@ -217,10 +401,7 @@ if __name__ == '__main__':
     #model.addChannel('bulk')
 
     app = QApplication(sys.argv)
-    animator = HoppingAnimator(model)
+    mw = MainWindow(model)
 
-    for thread in animator.threads:
-        thread.start()
-
-    animator.show()
+    mw.show()
     sys.exit(app.exec_())
