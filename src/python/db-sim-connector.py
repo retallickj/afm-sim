@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (QApplication, QGraphicsView, QGraphicsScene,
                              QGraphicsEllipseItem)
 
 from afm import AFMLine
-from animator import HoppingAnimator
+from animator import (HoppingAnimator, MainWindow)
 from hopper import HoppingModel
 
 class DBSimConnector:
@@ -130,12 +130,9 @@ class DBSimConnector:
         model.fixElectronCount(int(self.simparams['num_electrons']))
 
         app = QApplication(sys.argv)
-        animator = HoppingAnimator(model)
+        mw = MainWindow(model)
 
-        for thread in animator.threads:
-            thread.start()
-
-        animator.show()
+        mw.show()
         sys.exit(app.exec_())
 
     # Export the results
