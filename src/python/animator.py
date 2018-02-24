@@ -83,6 +83,8 @@ class HoppingAnimator(QGraphicsView):
 
     rate = 100  # millis/second
 
+    xpad, ypad = 6, 3
+
     bgcol = QColor(29, 35, 56)  # background color
     record_dir = './.temp_rec/'
 
@@ -133,8 +135,8 @@ class HoppingAnimator(QGraphicsView):
         '''Draw all the DBs for the animator'''
 
         # background
-        X = np.arange(np.min(self.X)-2, np.max(self.X)+3)
-        Y = np.arange(round(np.min(self.Y)), round(np.max(self.Y))+1)
+        X = np.arange(np.min(self.X)-self.xpad, np.max(self.X)+self.xpad+1)
+        Y = np.arange(round(np.min(self.Y))-self.ypad, round(np.max(self.Y))+self.ypad+1)
 
         f = self.c/self.b
         for x,y in product(X,Y):
@@ -345,7 +347,7 @@ class MainWindow(QMainWindow):
         self.ecount = QLabel()
         self.dock.addWidget(self.ecount)
         val, func = self.bulk.mu_on, lambda v: self.setBulkMu(v)
-        self.dock.addSlider("mu", 0, .25, .01, val, func)
+        self.dock.addSlider("mu", 0, .3, .01, val, func)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
 
