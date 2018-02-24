@@ -347,7 +347,7 @@ class MainWindow(QMainWindow):
         self.ecount = QLabel()
         self.dock.addWidget(self.ecount)
         val, func = self.bulk.mu_on, lambda v: self.setBulkMu(v)
-        self.dock.addSlider("mu", 0, .25, .01, val, func)
+        self.dock.addSlider("mu", 0, .3, .01, val, func)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
 
