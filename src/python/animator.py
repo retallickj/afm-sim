@@ -14,7 +14,7 @@ import shutil, os
 import numpy as np
 from itertools import product
 
-from PyQt5.QtCore import (Qt, QTimer, QThread, pyqtSignal)
+from PyQt5.QtCore import (Qt, QTimer, QThread, pyqtSignal, QDateTime)
 from PyQt5.QtGui import (QPen, QBrush, QColor, QPainter, QImage)
 from PyQt5.QtWidgets import *
 
@@ -155,10 +155,10 @@ class HoppingAnimator(QGraphicsView):
             self.dbs.append(DB(self.a*x,self.b*y))
             self.scene.addItem(self.dbs[-1])
 
-    def record(self):
-        '''Record the QGraphicsScene at the given fps'''
 
-        assert self.fps>0 and self.fps<=1000, 'Invalid fps'
+    def screencapture(self, fname):
+        '''Save a screenshot of the QGraphicsScene and save it to the given
+        filename'''
 
         self.scene.setSceneRect(self.scene.itemsBoundingRect())
         image = QImage(self.scene.sceneRect().size().toSize(), QImage.Format_ARGB32)
@@ -166,8 +166,18 @@ class HoppingAnimator(QGraphicsView):
 
         painter = QPainter(image)
         self.scene.render(painter)
-        image.save(os.path.join(self.record_dir, 'grab{0:06d}.png'.format(self.rind)))
+        image.save(fname)
         painter.end()
+
+
+    def record(self):
+        '''Record the QGraphicsScene at the given fps'''
+
+        assert self.fps>0 and self.fps<=1000, 'Invalid fps'
+
+        fname = os.path.join(self.record_dir, 'grab{0:06d}.png'.format(self.rind))
+        self.screencapture(fname)
+
         self.rind += 1
 
         self.rec_timer = QTimer()
@@ -381,6 +391,12 @@ class MainWindow(QMainWindow):
         elif e.key() == Qt.Key_Minus:
             zfact = 1-self.ZOOM
             self.animator.scale(zfact, zfact)
+        elif e.key() == Qt.Key_S:
+            fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss.png')
+            fname = os.path.join('.', fname)
+            print('Screenshot saved to: {0}'.format(os.path.normpath(fname)))
+            self.animator.screencapture(fname)
+
 
 
 
