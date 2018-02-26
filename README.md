@@ -8,6 +8,7 @@ Key | Behaviour
 :---: | ---
 *Q* | Close the animator (and compile the recording if enabled)
 *O* | Open the options panel
+*S* | Timestamped screenshot of display window (no sidepanel) to local directory
 *Space* | Advance the simulation one hop
 *-* | Zoom out
 *+* or *=* | Zoom in
