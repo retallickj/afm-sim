@@ -70,7 +70,7 @@ class AFMLine:
         self.pad = pad
 
         if Nel is not None:
-            self.model.setElectronCount(Nel)
+            self.model.fixElectronCount(Nel)
 
         # initialise model
         self.model.initialise()

@@ -1,0 +1,7 @@
+*.swp
+bin/*
+build/*
+afmmarcus
+cooldbdesign.xml
+cooloutput.xml
+tempfig.pdf
