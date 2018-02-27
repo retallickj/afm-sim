@@ -35,23 +35,23 @@ class Thread(QThread):
 
 class DB(QGraphicsEllipseItem):
 
-    pen     = QPen(Qt.white, 3)     # DB edge pen
+    pen     = QPen(QColor("white"), 2)     # DB edge pen
     bgpen   = QPen(Qt.darkGray, 1, Qt.DotLine)
 
     pfill   = QBrush(QColor("orange"))     # charged DB for fixed perturbers
     fill    = QBrush(Qt.green)      # charged DB fill color
     nofill  = QBrush(Qt.NoBrush)    # uncharged DB fill color
 
-    D = 1.5*_SF              # dot diameter
+    D = 1.8*_SF              # dot diameter
 
-    def __init__(self, x, y, bg=False, parent=None):
+    def __init__(self, x, y, n=-1, bg=False, parent=None):
         super(DB, self).__init__(_SF*x, _SF*y, self.D, self.D, parent=parent)
-        self.x, self.y = x, y
+        self.xx, self.yy, self.n = x, y, n
         self.setPen(self.bgpen if bg else self.pen)
         self.setCharge(False)
         self.bg = bg
         if not bg:
-            self.setZValue(1)
+            self.setZValue(2)
 
     def setCharge(self, charged):
         '''Set the charge state of the DB'''
@@ -64,9 +64,27 @@ class DB(QGraphicsEllipseItem):
         self.setBrush(brush)
 
     def mousePressEvent(self, e):
-        if self.bg:
+        if self.bg and e.button() == Qt.LeftButton:
             self.setCharge(not self.charged)
 
+
+
+class Tracker(QGraphicsEllipseItem):
+
+    pen = QPen(Qt.red, 2, Qt.DotLine)
+    D = DB.D*1.5
+    dd = .5*(D-DB.D)
+
+    def __init__(self, parent=None):
+        super(Tracker, self).__init__(0, 0, self.D, self.D, parent=parent)
+        self.setZValue(1)
+        self.setPen(self.pen)
+        self.setBrush(QBrush(Qt.NoBrush))
+        self.hide()
+
+    def track(self, db):
+        self.setPos(_SF*db.xx - self.dd , _SF*db.yy - self.dd)
+        self.show()
 
 
 
@@ -88,7 +106,8 @@ class HoppingAnimator(QGraphicsView):
     bgcol = QColor(29, 35, 56)  # background color
     record_dir = './.temp_rec/'
 
-    signal_recount = pyqtSignal()
+    signal_tick = pyqtSignal()
+    signal_dbtrack = pyqtSignal(int)
 
     def __init__(self, model, record=False, fps=30):
         '''Initialise the HoppingAnimator instance for the given DB positions.
@@ -129,6 +148,8 @@ class HoppingAnimator(QGraphicsView):
         self.setScene(self.scene)
 
         self._drawDBs()
+        self.tracker = Tracker()
+        self.scene.addItem(self.tracker)
 
         self.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
         self.setWindowTitle('Hopping Animator')
@@ -151,8 +172,8 @@ class HoppingAnimator(QGraphicsView):
 
         # foreground
         self.dbs = []
-        for x,y in zip(self.X, self.Y):
-            self.dbs.append(DB(self.a*x,self.b*y))
+        for n, (x,y) in enumerate(zip(self.X, self.Y)):
+            self.dbs.append(DB(self.a*x,self.b*y, n=n))
             self.scene.addItem(self.dbs[-1])
 
 
@@ -198,10 +219,11 @@ class HoppingAnimator(QGraphicsView):
         for i,c in enumerate(self.model.charge):
             self.dbs[i].setCharge(c)
 
-        self.signal_recount.emit()
 
         dt = self.model.peek()[0]
         self.model.run(dt)
+
+        self.signal_tick.emit()
 
         millis = int(self.rate*dt)
         #print(dt, millis)
@@ -212,14 +234,20 @@ class HoppingAnimator(QGraphicsView):
         else:
             self.tick()
 
-    def addFixedCharge(self, db):
-        '''Add a fixed charge on the given DB'''
-
     def mousePressEvent(self, e):
         super(HoppingAnimator, self).mousePressEvent(e)
         item = self.itemAt(e.pos())
-        if isinstance(item, DB) and item.bg:
-            self.model.addCharge(item.x, item.y, pos=item.charged)
+        if e.button() == Qt.LeftButton:
+            if isinstance(item, DB) and item.bg:
+                self.model.addCharge(item.xx, item.yy, pos=item.charged)
+        elif e.button() == Qt.RightButton:
+            if isinstance(item, DB):
+                self.signal_dbtrack.emit(item.n)
+
+    def mouseDoubleClickEvent(self, e):
+        self.mousePressEvent(e)
+
+
 
 
 class FieldSlider(QHBoxLayout):
@@ -338,10 +366,12 @@ class MainWindow(QMainWindow):
         self.record = record
         self.fps = fps
 
+        self.dbn = -1
         self.model = model
         self.bulk = self.model.addChannel('bulk')
         self.animator = HoppingAnimator(model, record=record, fps=fps)
-        self.animator.signal_recount.connect(self.recountCharges)
+        self.animator.signal_tick.connect(self.tickSlot)
+        self.animator.signal_dbtrack.connect(self.trackDB)
 
         self.initGUI()
         self.createDock()
@@ -360,8 +390,12 @@ class MainWindow(QMainWindow):
 
         self.dock = DockWidget(self)
 
+        self.beff = QLabel()
+        self.dock.addWidget(self.beff)
+
         self.ecount = QLabel()
         self.dock.addWidget(self.ecount)
+
         val, func = self.bulk.mu_on, lambda v: self.setBulkMu(v)
         self.dock.addSlider("mu", 0, .3, .01, val, func)
 
@@ -372,8 +406,26 @@ class MainWindow(QMainWindow):
         self.bulk.mu_off = v
         self.animator.tick()
 
-    def recountCharges(self):
+    def tickSlot(self):
         self.ecount.setText('Number of Electrons: {0}'.format(self.model.Nel))
+        self.echoDB()
+
+    def trackDB(self, n):
+        if self.dbn == n:
+            n = -1
+        self.dbn = n
+        if n<0:
+            self.animator.tracker.hide()
+        else:
+            self.animator.tracker.track(self.animator.dbs[n])
+        self.echoDB()
+
+    def echoDB(self):
+        if self.dbn < 0:
+            self.beff.setText('')
+        else:
+            self.beff.setText('DB-Beff: {0:.3f}'.format(self.model.beff[self.dbn]))
+
 
     def keyPressEvent(self, e):
 
@@ -405,13 +457,15 @@ if __name__ == '__main__':
     import sys
     sys.setrecursionlimit(50)
 
-    line = [8, 10, 15, 17, 22, 24, 29, 31, 36, 38]
-    #line.insert(0, line[0]-7)
+    line = [8, 10, 15, 17]
+    line.insert(0, line[0]-7)
     line.append(line[-1]+7)
 
-    _or = [(0,0,0),(2,1,0),(6,1,0),(8,0,0),(4,3,0),(4,4,1),(4,6,0)]
-    _or.append((-2,-1,0))
-    _or.append((10,-1,0))
+    pair = lambda n: [0, n]
+
+    _or = [(0,0,0),(2,1,0),(6,1,0),(8,0,0),(4,3,0),(4,4,1)]
+    #_or.append((-2,-1,0))
+    #_or.append((10,-1,0))
 
     def QCA(N):
         qca = []

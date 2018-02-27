@@ -24,6 +24,7 @@ class Channel(object):
 
     def __init__(self):
         '''Initialise a Channel'''
+        pass
 
     def setup(self, X, Y, kt):
         '''Set up channel for the given DB positions and thermal energy'''
@@ -31,6 +32,10 @@ class Channel(object):
         self.X, self.Y = X, Y
         self.lifetime = self.rebirth()
         self.tickrate = 1.
+
+    def tick(self):
+        '''Time until channel state changes'''
+        return np.inf
 
     def peek(self):
         '''Time until next charge hops onto the surface'''
@@ -69,14 +74,14 @@ class Bulk(Channel):
     '''Passive charge transfer between the surface and the bulk'''
 
     # prefactors
-    nu_on   = 1.    # maximum rate of hops onto the bulk
-    nu_off  = 1.    # maximum rate of hops from the bulk
+    nu_on   = 1e2   # maximum rate of hops onto the bulk
+    nu_off  = nu_on # maximum rate of hops from the bulk
 
     # energy offsets
-    mu_on   = .17    # local energy at which electrons start hopping onto Bulk
+    mu_on   = .15     # local energy at which electrons start hopping onto Bulk
     mu_off  = mu_on  # local energy at which electrons start hopping from Bulk
 
-    alpha   = 1.e3  # damping factor for kt, higher means sharper transition
+    alpha   = 1.e0  # damping factor for kt, higher means sharper transition
 
     # inherited methods
 
@@ -90,11 +95,11 @@ class Bulk(Channel):
 
     def _compute_onrates(self, beff):
         '''Compute the hopping rates from occupied DBs to the Bulk'''
-        return self.nu_on/(1.+np.exp((beff[self.occ]+self.mu_on)/self.kt))
+        return self.nu_on/(1.+np.exp(self.alpha*(beff[self.occ]+self.mu_on)/self.kt))
 
     def _compute_offrates(self, beff):
         '''Compute the hopping rates from the Bulk onto unoccupied DBs'''
-        return self.nu_off/(1.+np.exp(-(beff[self.nocc]+self.mu_off)/self.kt))
+        return self.nu_off/(1.+np.exp(-self.alpha*(beff[self.nocc]+self.mu_off)/self.kt))
 
 channels = {'bulk': Bulk,
             'tip':  None}
