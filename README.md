@@ -13,7 +13,12 @@ Key | Behaviour
 *-* | Zoom out
 *+* or *=* | Zoom in
 
-Clicking any hydrogen site will add/remove a fixed charge at that location. This will not automatically update the time before the next hop so you should advance the animation after any changes.
+
+## Mouse Commands
+Button  | Behaviour
+:---:   | ---
+*Left Click*  | Clicking any hydrogen site will add/remove a fixed charge at that location. This will not automatically update the time before the next hop so you should advance the animation after any changes.
+*Right Click* | Right clicking a DB will track its local potential on the options dialog. Re-click the same DB or a hydrogen site to end the tracking.
 
 ## Current Bugs
 
