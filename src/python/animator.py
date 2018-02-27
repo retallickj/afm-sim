@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import *
 from hopper import HoppingModel
 
 
-_SF = 10     # scale factor
+_SF = 50     # scale factor
 
 class Thread(QThread):
     def __init__(self, func):
@@ -35,8 +35,8 @@ class Thread(QThread):
 
 class DB(QGraphicsEllipseItem):
 
-    pen     = QPen(QColor("white"), 2)     # DB edge pen
-    bgpen   = QPen(Qt.darkGray, 1, Qt.DotLine)
+    pen     = QPen(QColor("white"), .2*_SF)     # DB edge pen
+    bgpen   = QPen(Qt.darkGray, .1*_SF, Qt.DotLine)
 
     pfill   = QBrush(QColor("orange"))     # charged DB for fixed perturbers
     fill    = QBrush(Qt.green)      # charged DB fill color
@@ -71,7 +71,7 @@ class DB(QGraphicsEllipseItem):
 
 class Tracker(QGraphicsEllipseItem):
 
-    pen = QPen(Qt.red, 2, Qt.DotLine)
+    pen = QPen(Qt.red, .2*_SF, Qt.DotLine)
     D = DB.D*1.5
     dd = .5*(D-DB.D)
 
@@ -95,9 +95,6 @@ class HoppingAnimator(QGraphicsView):
     a = 3.84    # lattice vector in x, angstroms    (intra dimer row)
     b = 7.68    # lattice vector in y, angstroms    (inter dimer row)
     c = 2.25    # dimer pair separation, angstroms
-
-    WINX = 1000  # window width
-    WINY = 800
 
     rate = 100  # millis/second
 
@@ -233,6 +230,13 @@ class HoppingAnimator(QGraphicsView):
             self.timer.start(min(millis, 10000))
         else:
             self.tick()
+
+
+    def zoomExtents(self):
+        '''Scale view to contain all items in the scene'''
+        rect = self.scene.itemsBoundingRect()
+        self.fitInView(rect, Qt.KeepAspectRatio)
+        self.scale(2,2)
 
     def mousePressEvent(self, e):
         super(HoppingAnimator, self).mousePressEvent(e)
@@ -384,6 +388,7 @@ class MainWindow(QMainWindow):
 
         self.setGeometry(100, 100, self.WINX, self.WINY)
         self.setCentralWidget(self.animator)
+        self.animator.zoomExtents()
 
     def createDock(self):
         '''Create the dock widget for simulation options'''
@@ -475,7 +480,7 @@ if __name__ == '__main__':
         qca.append((-4,0,1))
         return qca
 
-    device = QCA(2)
+    device = QCA(1)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
