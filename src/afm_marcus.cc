@@ -11,7 +11,8 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <Python.h>
+//#include <Python.h>
+#include <boost/python.hpp>
 #include <boost/filesystem.hpp>
 
 using namespace phys;
