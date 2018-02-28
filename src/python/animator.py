@@ -96,7 +96,7 @@ class HoppingAnimator(QGraphicsView):
     b = 7.68    # lattice vector in y, angstroms    (inter dimer row)
     c = 2.25    # dimer pair separation, angstroms
 
-    rate = 100  # millis/second
+    rate = 10   # speed-up factor
 
     xpad, ypad = 6, 3
 
@@ -221,8 +221,8 @@ class HoppingAnimator(QGraphicsView):
         self.model.run(dt)
 
         self.signal_tick.emit()
+        millis = int(dt*1000./self.rate)
 
-        millis = int(self.rate*dt)
         #print(dt, millis)
         if millis>=1:
             self.timer = QTimer()
@@ -402,13 +402,21 @@ class MainWindow(QMainWindow):
         self.dock.addWidget(self.ecount)
 
         val, func = self.bulk.mu_on, lambda v: self.setBulkMu(v)
-        self.dock.addSlider("mu", 0, .3, .01, val, func)
+        self.dock.addSlider("mu", .01, .3, .01, val, func)
+
+        val, func = np.log10(self.animator.rate), lambda r: self.setRate(10**r)
+        self.dock.addSlider("log(rate)",-3., 3., .5, val, func)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
 
     def setBulkMu(self, v):
         self.bulk.mu_on = v
         self.bulk.mu_off = v
+        self.animator.tick()
+
+    def setRate(self, v):
+        self.animator.rate = v
+        self.animator.tick()
         self.animator.tick()
 
     def tickSlot(self):
@@ -477,10 +485,10 @@ if __name__ == '__main__':
         for n in range(N):
             x0 = 10*n
             qca += [(x0,0,1), (x0+3,0,1), (x0,2,0), (x0+3,2,0)]
-        qca.append((-4,0,1))
+        #qca.append((-4,0,1))
         return qca
 
-    device = QCA(1)
+    device = QCA(5)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'

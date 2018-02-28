@@ -74,7 +74,7 @@ class Bulk(Channel):
     '''Passive charge transfer between the surface and the bulk'''
 
     # prefactors
-    nu_on   = 1e2   # maximum rate of hops onto the bulk
+    nu_on   = 1e3   # maximum rate of hops onto the bulk
     nu_off  = nu_on # maximum rate of hops from the bulk
 
     # energy offsets
