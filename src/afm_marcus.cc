@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <Python.h>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/replace.hpp>
 
 using namespace phys;
 
@@ -50,14 +51,16 @@ bool AFMMarcus::runSim()
 
   // detect script extension, assume Windows if it is *.exe
   bool windows_mode = false;
-  if (scriptPath().find(".exe", scriptPath().length()-4)) {
+  if (scriptPath().find(".exe", scriptPath().length()-4) != std::string::npos) {
     std::cout << "The extension of the script is .exe, assuming Windows mode"
         << std::endl;
     windows_mode = true;
-    script_problem_path.replace(script_problem_path.begin(),
+    boost::replace_all(script_problem_path, "/", "\\");
+    boost::replace_all(script_result_path, "/", "\\");
+    /*script_problem_path.replace(script_problem_path.begin(),
         script_problem_path.end(), "/", "\\");
     script_result_path.replace(script_result_path.begin(),
-        script_result_path.end(), "/", "\\");
+        script_result_path.end(), "/", "\\");*/
   }
 
   // write the minimized problem to file with only the info required for python script
