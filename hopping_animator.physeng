@@ -3,8 +3,8 @@
     <name>Hopping Animator</name>
     <version>0.1</version>
     <interpreter></interpreter> <!-- used for calling a script with python, java, etc. Leave blank otherwise -->
-    <bin_path>afmmarcus</bin_path> <!-- path to binary (standalone) or script (read by interpreter), relative to the folder containing engine_description.xml -->
-    <linked_script_path>db-sim-connector.py</linked_script_path> <!-- if the binary is a connector that calls another script, indicate the script path here, relative to the folder containing engine_description.xml -->
+    <bin_path>afmmarcus</bin_path> <!-- path to binary (standalone) or script (read by interpreter), relative to the directory containing this file -->
+    <linked_script_path>db-sim-connector.py</linked_script_path> <!-- if the binary above is a connector that calls another script or binary, indicate the script/binary path here, relative to the directory containing this file. -->
     <gui_dialog_path>hopping_animator.ui</gui_dialog_path>
     <sim_params>
         <!--<param unmodifiable="true" value="animation">simulation_type</param>-->

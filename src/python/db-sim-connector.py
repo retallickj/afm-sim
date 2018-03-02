@@ -120,7 +120,6 @@ class DBSimConnector:
 
     def runAnimation(self):
         import sys
-        sys.setrecursionlimit(50)
 
         # default to marcus model if no model parameter exists
         if ('hopping_model' not in self.simparams):

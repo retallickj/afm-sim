@@ -12,7 +12,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <Python.h>
-//#include <boost/python.hpp>
 #include <boost/filesystem.hpp>
 
 using namespace phys;
@@ -42,12 +41,24 @@ bool AFMMarcus::runSim()
     std::string curr_time_str = formattedTime("%Y%m%d-%H%M%S");
 
     tmp_dir = boost::filesystem::temp_directory_path().string();
-    tmp_dir += "\\afm_marcus\\" + curr_time_str;
+    tmp_dir += "/afm_marcus/" + curr_time_str;
     std::cout << "Temp directory = " << tmp_dir << std::endl;
   }
   boost::filesystem::create_directories(tmp_dir);
-  script_problem_path = tmp_dir + "\\afmmarcus_problem.xml";
-  script_result_path = tmp_dir + "\\afmmarcus_result.xml";
+  script_problem_path = tmp_dir + "/afmmarcus_problem.xml";
+  script_result_path = tmp_dir + "/afmmarcus_result.xml";
+
+  // detect script extension, assume Windows if it is *.exe
+  bool windows_mode = false;
+  if (scriptPath().find(".exe", scriptPath().length()-4)) {
+    std::cout << "The extension of the script is .exe, assuming Windows mode"
+        << std::endl;
+    windows_mode = true;
+    script_problem_path.replace(script_problem_path.begin(),
+        script_problem_path.end(), "/", "\\");
+    script_result_path.replace(script_result_path.begin(),
+        script_result_path.end(), "/", "\\");
+  }
 
   // write the minimized problem to file with only the info required for python script
   // to understand the problem
@@ -64,24 +75,32 @@ bool AFMMarcus::runSim()
   // call the script. This is non-forking so current process will wait until it finishes
   system(command.c_str());*/
 
-  std::cout << "Calling Python with new protocol" << std::endl;
-  Py_Initialize();
-  PyObject *obj = Py_BuildValue("s", scriptPath().c_str());
-  FILE* script_file = _Py_fopen_obj(obj, "r+");
-  //FILE* script_file = fopen(scriptPath().c_str(), "r");
-  int argc = 5;
-  wchar_t * argv[5];
+  if (windows_mode) {
+    // run the external program through the Windows shell
+    std::string command = scriptPath() + " ";
+    command += "-i " + script_problem_path + " "; // problem path for the script to read
+    command += "-o " + script_result_path;  // result path that the script writes to
+    system(command.c_str());
+  } else {
+    std::cout << "Calling Python with new protocol" << std::endl;
+    Py_Initialize();
+    PyObject *obj = Py_BuildValue("s", scriptPath().c_str());
+    FILE* script_file = _Py_fopen_obj(obj, "r+");
+    //FILE* script_file = fopen(scriptPath().c_str(), "r");
+    int argc = 5;
+    wchar_t * argv[5];
 
-  argv[0] = Py_DecodeLocale(scriptPath().c_str(), NULL);
-  argv[1] = Py_DecodeLocale("-i", NULL);
-  argv[2] = Py_DecodeLocale(script_problem_path.c_str(), NULL);
-  argv[3] = Py_DecodeLocale("-o", NULL);
-  argv[4] = Py_DecodeLocale(script_result_path.c_str(), NULL);
+    argv[0] = Py_DecodeLocale(scriptPath().c_str(), NULL);
+    argv[1] = Py_DecodeLocale("-i", NULL);
+    argv[2] = Py_DecodeLocale(script_problem_path.c_str(), NULL);
+    argv[3] = Py_DecodeLocale("-o", NULL);
+    argv[4] = Py_DecodeLocale(script_result_path.c_str(), NULL);
 
-  Py_SetProgramName(argv[0]);
-  PySys_SetArgv(argc, argv);
-  PyRun_SimpleFile(script_file, scriptPath().c_str());
-  Py_Finalize();
+    Py_SetProgramName(argv[0]);
+    PySys_SetArgv(argc, argv);
+    PyRun_SimpleFile(script_file, scriptPath().c_str());
+    Py_Finalize();
+  }
 
   //FILE* script_file = fopen("db-sim-connector.py", "r");
   /*Py_Initialize();
