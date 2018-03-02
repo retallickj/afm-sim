@@ -1,17 +1,40 @@
 #### PROJECT SETTINGS ####
 # Special settings for cross-compiling for Windows
-ifeq ($(FOR_OS),win)
+ifeq ($(FOR_OS),win32)
 	# MXE paths
 	MXE_INCLUDE_PATH=/opt/mxe/usr/i686-w64-mingw32.static/include
 	MXE_LIB_PATH=/opt/mxe/usr/i686-w64-mingw32.static/lib
 
 	# Boost compiled with mingw32
-	BOOST_INCLUDE_PATH = $(MXE_INCLUDE_PATH)/boost
+	BOOST_INCLUDE_PATH=$(MXE_INCLUDE_PATH)/boost
 	BOOST_LIB_PATH=$(MXE_LIB_PATH)
 
-	BIN_EXT = .exe
-	CXX = i686-w64-mingw32.static-g++ -I $(MXE_INCLUDE_PATH) -L $(MXE_LIB_PATH)
-	PKG_CONFIG = i686-w64-mingw32.static-pkg-config
+	# Windows Python files
+	PYTHON_INCLUDE_PATH=/home/samuelngsh/Python36-32/include
+	PYTHON_LIB_PATH=/home/samuelngsh/Python36-32/libs
+
+	BIN_EXT=.exe
+	CXX=i686-w64-mingw32.static-g++ -I $(PYTHON_INCLUDE_PATH) -L $(PYTHON_LIB_PATH) -I $(BOOST_INCLUDE_PATH) -L $(BOOST_LIB_PATH)
+	LINK_FLAGS = -lboost_system-mt -lboost_filesystem-mt -lpython36
+	PKG_CONFIG=i686-w64-mingw32.static-pkg-config
+endif
+ifeq ($(FOR_OS),win64)
+	# MXE paths
+	MXE_INCLUDE_PATH=/opt/mxe/usr/x86_64-w64-mingw32.static/include
+	MXE_LIB_PATH=/opt/mxe/usr/x86_64-w64-mingw32.static/lib
+
+	# Boost compiled with mingw32
+	BOOST_INCLUDE_PATH=$(MXE_INCLUDE_PATH)/boost
+	BOOST_LIB_PATH=$(MXE_LIB_PATH)
+
+	# Windows Python files
+	PYTHON_INCLUDE_PATH=/home/samuelngsh/Python36-64/include
+	PYTHON_LIB_PATH=/home/samuelngsh/Python36-64/libs
+
+	BIN_EXT=.exe
+	CXX=x86_64-w64-mingw32.static-g++ -I $(PYTHON_INCLUDE_PATH) -L $(PYTHON_LIB_PATH) -I $(BOOST_INCLUDE_PATH) -L $(BOOST_LIB_PATH)
+	LINK_FLAGS = -lboost_system-mt -lboost_filesystem-mt -lpython36
+	PKG_CONFIG=x86_64-w64-mingw32.static-pkg-config
 endif
 # The name of the executable to be created
 BIN_NAME := afmmarcus$(BIN_EXT)
@@ -24,7 +47,7 @@ SRC_EXT = cc
 # Path to the source directory, relative to the makefile
 SRC_PATH = .
 # Space-separated pkg-config libraries used by this project
-LIBS = python3
+LIBS = #python3
 # General compiler flags
 COMPILE_FLAGS = -std=c++11 -Wall -Wextra -g
 # Additional release-specific flags
@@ -34,7 +57,7 @@ DCOMPILE_FLAGS = -D DEBUG
 # Add additional include paths
 INCLUDES = -I $(SRC_PATH)
 # General linker settings
-LINK_FLAGS = -lboost_system -lboost_filesystem
+LINK_FLAGS ?= -lboost_system -lboost_filesystem
 # Additional release-specific linker settings
 RLINK_FLAGS =
 # Additional debug-specific linker settings
