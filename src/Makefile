@@ -1,6 +1,6 @@
 #### PROJECT SETTINGS ####
 # The name of the executable to be created
-BIN_NAME := afmmarcus$(BIN_EXT)
+BIN_NAME := afmmarcus
 # Compiler used
 CXX ?= g++
 # Package config
@@ -44,7 +44,7 @@ ifeq ($(FOR_OS),win32)
 	PYTHON_INCLUDE_PATH=/home/samuelngsh/Python36-32/include
 	PYTHON_LIB_PATH=/home/samuelngsh/Python36-32/libs
 
-	BIN_EXT=.exe
+	BIN_NAME=afmmarcus.exe
 	CXX=i686-w64-mingw32.static-g++ -I $(PYTHON_INCLUDE_PATH) -L $(PYTHON_LIB_PATH) -I $(BOOST_INCLUDE_PATH) -L $(BOOST_LIB_PATH)
 	LIBS=
 	LINK_FLAGS = -lboost_system-mt -lboost_filesystem-mt -lpython36
@@ -63,7 +63,7 @@ ifeq ($(FOR_OS),win64)
 	PYTHON_INCLUDE_PATH=/home/samuelngsh/Python36-64/include
 	PYTHON_LIB_PATH=/home/samuelngsh/Python36-64/libs
 
-	BIN_EXT=.exe
+	BIN_NAME=afmmarcus.exe
 	CXX=x86_64-w64-mingw32.static-g++ -I $(PYTHON_INCLUDE_PATH) -L $(PYTHON_LIB_PATH) -I $(BOOST_INCLUDE_PATH) -L $(BOOST_LIB_PATH)
 	LIBS=
 	LINK_FLAGS=-lboost_system-mt -lboost_filesystem-mt -lpython36

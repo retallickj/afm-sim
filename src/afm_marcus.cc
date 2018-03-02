@@ -80,9 +80,10 @@ bool AFMMarcus::runSim()
 
   if (windows_mode) {
     // run the external program through the Windows shell
-    std::string command = "\"" + scriptPath() + "\" ";
+    std::string command = "\"\"" + scriptPath() + "\" ";
     command += "-i \"" + script_problem_path + "\" "; // problem path for the script to read
-    command += "-o \"" + script_result_path + "\"";  // result path that the script writes to
+    command += "-o \"" + script_result_path + "\"\"";  // result path that the script writes to
+    std::cout << "Calling command: " << command << std::endl;
     system(command.c_str());
   } else {
     std::cout << "Calling Python with new protocol" << std::endl;
