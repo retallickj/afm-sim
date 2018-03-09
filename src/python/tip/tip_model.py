@@ -13,7 +13,7 @@ __date__        = '2018-03-08'  # last update
 
 import numpy as np
 import scipy.constants as const
-from scipy.interpole import interp1d
+from scipy.interpolate import interp1d
 
 import os.path
 
@@ -34,8 +34,9 @@ class TipModel:
     E_DB_m_bulkCB = -0.32   # negative DB level in bulk wrt CBM, eV
 
     # experimental fit parameters
-    tipR    = 7.    # tip radius in nm
-    tipDW   = 0.65  # actual difference in tip-sample work-functions
+    tipR    = 7.    # tip radius, nm
+    tipH    = .5    # tip-surface separation, nm
+    tipDW   = 0.65  # actual difference in tip-sample work-functions, eV
 
     # calibration data
     TIBBvH_fname = os.path.join('.', 'TIBB_vs_H.dat')
@@ -45,14 +46,13 @@ class TipModel:
     tipDW0  = 0.9   # tip-sample work-function delta in FEM calculations, eV
     tibbPars = [1.01, .5, 1.1]  # tip model fit parameters, [pw0, dcy0, pw1]
 
-    # useful lambdas
-
-
     def __init__(self):
         '''Initialise the model parametrization'''
 
         self._TIBBvH_calib()
         self._TIBBvR_calib()
+        self._updateTIBB()
+        self.setPos(0,0)
 
     def setup(self, X, Y):
         '''Setup the tip model for the given DB locations'''
@@ -62,7 +62,7 @@ class TipModel:
 
     def setPos(self, x, y):
         '''Update the tip position, make the appropriate pre-calcs'''
-        self.x, self.y = x, y
+        self.tipX, self.tipY = x, y
 
     def setRadius(self, R):
         '''Set the tip radius in nm, make appropriate pre-calcs'''
@@ -78,23 +78,25 @@ class TipModel:
         '''Calculate the tip induced level shifts for each DB when the given
         DBs are occupied'''
 
+        from pprint import pprint
+
         # tip induced band bending
         dX, dY = self.X-self.tipX, self.Y-self.tipY
         R = np.sqrt(dX**2+dY**2)
         TIBB = self.tibb_fit(R)
 
         # image charge locations
-        factors = self.tipR**2/(R[occ]**2+self.tipH**2)
-        posIC = [self.X[occ]-(1-factors)*dX[occ],
-                 self.Y[occ]-(1-factors)*dY[occ], (1-factors)*self.tipH]
+        facts = self.tipR**2/(R[occ]**2+(self.tipH+self.tipR)**2)
+        posIC = [self.X[occ]-(1-facts)*dX[occ],
+                 self.Y[occ]-(1-facts)*dY[occ], (1-facts)*(self.tipH+self.tipR)]
 
         # image charge induced band bending
         dX = self.X - posIC[0].reshape(-1,1)
         dY = self.Y - posIC[1].reshape(-1,1)
-        R, Q = np.sqrt(dX**2+dY**2+posIC.reshape(-1,1)**2), np.sqrt(factors)
+        R, Q = np.sqrt(dX**2+dY**2+posIC[2].reshape(-1,1)**2), np.sqrt(facts)
         ICIBB = self.Kc*np.dot(Q, 1/R)
 
-        return TIBB+TCIBB
+        return TIBB-ICIBB
 
     # internal methods
 
@@ -123,7 +125,6 @@ class TipModel:
         coefs = np.polyfit(Htip, TIBB*1e-3, 3)
         self.TIBBvH_fit = lambda H: np.polyval(coefs, H)
 
-
     def _TIBBvR_calib(self):
         '''Calibrate the distance, R, dependence of the TIBB for a specific
         height and tip radius'''
@@ -131,9 +132,29 @@ class TipModel:
         data = np.genfromtxt(self.TIBBvR_fname, delimiter=None)
         assert data.shape[1]==2, 'TIBBvR calibration data must be 2-column'
         self.femR, self.femTIBB = data.T
-        #self.femTIBB = interp1d(R, TIBB, fill_value='extrapolate')
-
 
 if __name__ == '__main__':
+
+    da = .384
+
+
+    ## Configs with three 0s:
+    #QconfigList.append([1, 1,0, 0,0, 1])   # a list with charges on each DB in units of -qe.
+    #QconfigList.append([1, 0,1, 0,0, 1])   # a list with charges on each DB in units of -qe.
+    #QconfigList.append([1, 0,0, 1,0, 1])   # a list with charges on each DB in units of -qe.
+    #QconfigList.append([1, 0,0, 0,1, 1])   # a list with charges on each DB in units of -qe.
+
+    DBsXlist = da*np.array([0, 7, 9, 14, 16, 23])
+    DBsYlist = [0, 0., 0., 0., 0., 0.]
+    Xtip = 0.  # tip coordinate in [nm] w.r.t. the DB numbered 1.
+    Ytip = 0.  # tip coordinate in [nm] w.r.t. the DB numbered 1.
+    Htip = 0.5  # actual tip height in experiment in nm
+
+
     tip = TipModel()
-    print(tip.coefs)
+    tip.setup(DBsXlist, DBsYlist)
+    tip.setPos(Xtip, Ytip)
+    print(tip.energy_shifts([0,1,5]))
+    print(tip.energy_shifts([0,2,5]))
+    print(tip.energy_shifts([0,3,5]))
+    print(tip.energy_shifts([0,4,5]))
