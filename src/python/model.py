@@ -62,9 +62,11 @@ class VRHModel(BaseModel):
     '''Variable-Range Hopping model for hopping rates'''
 
     # model-specific parameters
-    alph    = 1e-2     # inverse attenuation length, 1/angstroms
-    r0      = 1.e11   # scaling prefactor for rates
+    alph    = 1e-1      # inverse attenuation length, 1/angstroms
+    nu      = 1.e11     # scaling prefactor for rates
     lamb    = 0.01      # self-trapping energy, eV
+    ktd     = 1.0       # inverse damping for kT
+    expmax  = 1e2       # maximum argument for exp(x)
 
     def __init__(self):
         super(VRHModel, self).__init__()
@@ -72,13 +74,20 @@ class VRHModel(BaseModel):
     def setup(self, X, Y, kt):
         self.beta = 1./kt
         dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
-        R = np.sqrt(dX**2+dY**2)
-        self.T0 = self.r0*np.exp(-2*self.alph*R)
+        self.R = np.sqrt(dX**2+dY**2)
+        self.setNu(self.nu)
 
     # TODO: problem with exp overflow here, decreases in energy beyond lamb
     #       cause essentially instantaneous hops
     def rates(self, dG, occ, nocc):
-        return self.T0[occ,:][:,nocc]*np.exp(-self.beta*(dG+self.lamb))
+        arg = -self.ktd*self.beta*(dG+self.lamb)
+        mask = arg <= self.expmax
+        arg = arg*mask + self.expmax*(1-mask)
+        return self.T0[occ,:][:,nocc]*np.exp(arg)
+
+    def setNu(self, nu):
+        self.nu = nu
+        self.T0 = self.nu*np.exp(-2*self.alph*self.R)
 
     def cohopping_rate(self, dG, i, j, k, l):
         pass
@@ -92,7 +101,7 @@ class MarcusModel(BaseModel):
 
     # transfer integral parameters
     t0      = 1e-3      # prefactor
-    alph    = 1e-2      # inverse attenuation length, 1/angstroms
+    alph    = 5e-1      # inverse attenuation length, 1/angstroms
 
     # cohopping parameters
     cohop_lamb = lamb   # cohopping reorganization energy, eV
@@ -105,9 +114,15 @@ class MarcusModel(BaseModel):
     # inherited methods
 
     def setup(self, X, Y, kt):
+        self.kt = kt
         self.lbeta = 1./(self.lamb*kt)
         dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
         self.R = np.sqrt(dX**2+dY**2)
+        self.Tp = np.abs(self.tint(self.R))**2*np.sqrt(self.lbeta*np.pi)/self.hbar
+
+    def setLambda(self, lamb):
+        self.lbeta = np.inf if lamb == 0 else 1./(lamb*self.kt)
+        self.lamb = lamb
         self.Tp = np.abs(self.tint(self.R))**2*np.sqrt(self.lbeta*np.pi)/self.hbar
 
     def rates(self, dG, occ, nocc):

@@ -33,6 +33,7 @@ class Thread(QThread):
         self.func()
         self.exec_()
 
+
 class DB(QGraphicsEllipseItem):
 
     pen     = QPen(QColor("white"), .2*_SF)     # DB edge pen
@@ -63,10 +64,6 @@ class DB(QGraphicsEllipseItem):
 
         self.setBrush(brush)
 
-    def mousePressEvent(self, e):
-        if self.bg and e.button() == Qt.LeftButton:
-            self.setCharge(not self.charged)
-
 
 
 class Tracker(QGraphicsEllipseItem):
@@ -88,6 +85,147 @@ class Tracker(QGraphicsEllipseItem):
 
 
 
+class Tip(QGraphicsEllipseItem):
+
+    pen     = QPen(QColor("blue"), .2*_SF)
+    fill    = QBrush(QColor("blue"))
+
+    D = 2*_SF
+
+    def __init__(self, parent=None):
+        super(Tip, self).__init__(0, 0, self.D, self.D, parent=parent)
+        self.setPen(self.pen)
+        self.setBrush(self.fill)
+        self.setZValue(3)
+        #self.hide()
+
+
+
+class FieldSlider(QHBoxLayout):
+    '''Container for parameter selected by a QSlider'''
+
+    def __init__(self, txt, parent=None):
+        super(FieldSlider, self).__init__(parent)
+
+        self.txt = QLabel(txt)
+        self.out = QLabel()
+        self.fval = lambda n: n
+        self.func = lambda x: None
+
+        self.initGUI()
+
+    def initGUI(self):
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setTickInterval(1)
+        self.slider.valueChanged.connect(self.valueChanged)
+        self.slider.sliderReleased.connect(self.sliderReleased)
+
+        self.addWidget(self.txt, stretch=4)
+        self.addWidget(self.slider, stretch=40)
+        self.addWidget(self.out, stretch=4)
+
+    def setBounds(self, lo, hi, inc, val):
+
+        self.lo, self.hi, self.inc = lo, hi, inc
+        self.fval = lambda n: lo+n*self.inc
+        self.val = val
+
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(round((hi-lo)*1./inc))
+        self.slider.setValue(round((val-lo)/inc))
+
+    def setValue(self, val):
+        self.val = val
+        self.setValue(round((val-self.lo)/self.inc))
+
+    def setToolTip(self, txt):
+        self.txt.setToolTip(txt)
+
+    # event handling
+    def valueChanged(self):
+        self.val = self.fval(self.slider.value())
+        self.out.setText('{0:.3f}'.format(self.val))
+
+    def sliderReleased(self):
+        self.func(self.val)
+
+
+class FieldEdit(QHBoxLayout):
+    '''Container for parameter selected by a QLineEdit'''
+
+    def __init__(self, parent=None):
+        super(FieldEdit, self).__init__(parent)
+
+
+class DockWidget(QDockWidget):
+    ''' '''
+
+    WIDTH = 200
+
+    def __init__(self, parent=None):
+        super(DockWidget, self).__init__(parent)
+
+        self.initGUI()
+
+    def initGUI(self):
+
+        self.setMinimumWidth(self.WIDTH)
+        self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+
+        widget = QWidget(self)
+        self.vbox = QVBoxLayout(widget)
+        self.vbox.setAlignment(Qt.AlignTop)
+        self.setWidget(widget)
+
+        self.hide()
+
+    def addSeparator(self):
+        '''Add a horizonal separator line to the dock layout'''
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShadow(QFrame.Sunken)
+        self.vbox.addWidget(sep)
+
+    def addText(self, txt):
+        '''Add a line of text to the dock'''
+
+        label = QLabel(txt)
+        self.vbox.addWidget(label)
+
+    def addSlider(self, txt, lo, hi, inc, val, func, ttip=''):
+        '''Add a slider controlled parameter to the Dock Widget
+
+        inputs:
+            txt     : Label of the slider
+            lo      : Lowest value of the slider
+            hi      : Highest value of the slider
+            inc     : Increment between slider ticks
+            func    : When slider is updated to x, func(x) called
+        '''
+
+        slider = FieldSlider(txt)
+        slider.setBounds(lo, hi, inc, val)
+        slider.setToolTip(ttip)
+        slider.func = func
+
+        self.vbox.addLayout(slider)
+        return slider
+
+    def addWidget(self, widget, stretch=-1):
+        self.vbox.addWidget(widget, stretch=stretch)
+
+    def addLayout(self, layout, stretch=-1):
+        self.vbox.addLayout(layout, stretch=stretch)
+
+
+
+
+
+
+
+
 class HoppingAnimator(QGraphicsView):
     ''' '''
 
@@ -96,7 +234,7 @@ class HoppingAnimator(QGraphicsView):
     b = 7.68    # lattice vector in y, angstroms    (inter dimer row)
     c = 2.25    # dimer pair separation, angstroms
 
-    rate = 10   # speed-up factor
+    rate = 1   # speed-up factor
 
     xpad, ypad = 6, 3
 
@@ -117,13 +255,21 @@ class HoppingAnimator(QGraphicsView):
         self.model = model
         self.X, self.Y = self.model.X, self.model.Y
 
+        self.bulk = self.model.getChannel('bulk')
+        self.tip = self.model.getChannel('tip')
+
         self._initGUI()
 
         self.model.initialise()
 
         # setup threads
+        self.timers = []
         self.threads = []
         self.threads.append(Thread(self.tick))
+
+        self.tick_timer = QTimer()
+        self.tick_timer.timeout.connect(self.tick)
+        self.timers.append(self.tick_timer)
 
         # setup recording
         self.recording = record
@@ -137,6 +283,15 @@ class HoppingAnimator(QGraphicsView):
 
             # setup threads
             self.threads.append(Thread(self.record))
+            self.record_timer = QTimer()
+            self.record_timer.timeout.connect(self.record)
+
+        self.paused = False
+        self.rtimes = [0,]*len(self.timers)
+
+        self.panning = False
+        self.panx, self.pany = 0., 0.
+        self.path = []
 
     def _initGUI(self):
         '''Initialise the animator window'''
@@ -148,12 +303,222 @@ class HoppingAnimator(QGraphicsView):
         self.tracker = Tracker()
         self.scene.addItem(self.tracker)
 
+        if self.tip is not None:
+            self.tip_item = Tip()
+            self.scene.addItem(self.tip_item)
+
         self.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
         self.setWindowTitle('Hopping Animator')
 
         # Set Anchors
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
         self.setResizeAnchor(QGraphicsView.NoAnchor)
+
+    def passControls(self, dock):
+        '''Add control fields to the given DockWidget'''
+
+
+        # hopping controls
+
+        dock.addSeparator()
+        dock.addText('Hopping Model:')
+
+        if self.model.fixed_pop:
+            val = self.model.Nel
+            func = lambda N: self.setParFunc(self.model.fixElectronCount, N)
+            dock.addSlider('N', 0, self.model.N, 1, val, func,
+            'Number of electrons in the surface.')
+
+        # hopping model parameters
+
+        mdl = self.model.model
+        if mdl.__class__.__name__ == 'MarcusModel':
+            val = self.model.model.lamb
+            func = lambda v: self.setParFunc(self.model.model.setLambda, v)
+            dock.addSlider('lambda', 0.01, 0.2, .001, val, func,
+                'Reorganization Energy: self-trapping for DB occupation')
+
+        elif mdl.__class__.__name__ == 'VRHModel':
+            val, func = mdl.lamb, lambda v: self.setPar(mdl, 'lamb', v)
+            dock.addSlider('lambda', 0.01, 0.2, .001, val, func,
+                'Reorganization Energy: self-trapping for DB occupation')
+
+            val = np.log10(mdl.nu)
+            func = lambda v: self.setParFunc(mdl.setNu, 10**v)
+            dock.addSlider('log(nu)', -1, 5, .5, val, func,
+                'Hopping rate prefactor')
+
+            val, func = mdl.ktd, lambda v: self.setPar(mdl, 'ktd', v)
+            dock.addSlider('ktd', 0.01, 1, .01, val, func,
+                'Inverse kT attenuation, lower increases effective temperature')
+
+
+        # bulk controls
+        if self.bulk is not None:
+            dock.addSeparator()
+            dock.addText('Bulk properties')
+
+            val, func = self.bulk.lamb, lambda v: self.setPar(self.bulk, 'lamb', v)
+            dock.addSlider('lambda', .01, .4, .005, val, func,
+                'Self-Trapping energy for surface-bulk hopping')
+
+            val, func = self.bulk.mu, lambda v: self.setPar(self.bulk, 'mu', v)
+            dock.addSlider('mu', -.3, .3, .01, val, func,
+                'Chemical Potential: local potential at which charges will hop \
+                between the bulk and the surface')
+
+            val = np.log10(self.bulk.nu)
+            func = lambda v: self.setPar(self.bulk, 'nu', 10**v)
+            dock.addSlider('log(nu)', -1, 5, .5, val, func,
+                'Maximum hopping rate between the bulk and the surface')
+
+        # tip controls
+        if self.tip is not None:
+            dock.addSeparator()
+            dock.addText('Tip properties')
+
+            val, func = self.tip.scale, lambda v: self.setPar(self.tip, 'scale', v)
+            dock.addSlider('scale', 0., 1., .01, val, func,
+                'Attenuation for tip contribution to the energy calculation')
+
+            val, func = self.tip.epsr, lambda v: self.setPar(self.tip, 'epsr', v)
+            dock.addSlider('epsr', 1., 10., .2, val, func,
+                'Relative permittivity for image charge interactions')
+
+            val, func = self.tip.lamb, lambda v: self.setPar(self.tip, 'lamb', v)
+            dock.addSlider('lambda', 0.01, .4, .005, val, func,
+                'Self-Trapping energy for surface-tip hopping')
+
+            val, func = self.tip.mu, lambda v: self.setPar(self.tip, 'mu', v)
+            dock.addSlider('mu', -1., 1., .01, val, func,
+                'Chemical Potential: local potential at which charges will hop \
+                between the tip and surface')
+
+            val = np.log10(self.tip.TR0)
+            func = lambda v: self.setPar(self.tip, 'TR0', 10**v)
+            dock.addSlider('log(nu)', -1, 5, .5, val, func,
+                'Maximum hopping rate between the tip and surface')
+
+
+            val = 1e3*self.tip.tipH
+            func = lambda h: self.setParFunc(self.tip.setHeight, 1e-3*h)
+            dock.addSlider('H', 100, 1000, 10, val, func,
+                'Tip height in pm')
+
+            val = self.tip.tipR
+            func = lambda R: self.setParFunc(self.tip.setRadius, R)
+            dock.addSlider('R', 1, 50, 1, val, func,
+                'Tip radius in nm')
+
+            val, func = self.tip.rate, lambda v: self.setPar(self.tip, 'rate', v)
+            dock.addSlider('rate', 1., 50., .5, val, func,
+                'Tip scan rate in nm/s')
+
+        # animator controls
+        if True:
+            dock.addSeparator()
+            dock.addText('Animation controls')
+
+            val = np.log10(self.rate)
+            func = lambda v: self.setPar(self, 'rate', 10**v, tc=2)
+            dock.addSlider('log(rate)', -3., 3., .5, val, func,
+                'Speed-up factor for the animation.')
+
+        # functionality
+        if self.tip is not None:
+
+            dock.addSeparator()
+            dock.addText('Tip Programs:')
+
+            self.pad_edit = QLineEdit('2')
+            self.pad_edit.setToolTip('Padding size, in angstroms')
+            self.nline_edit = QLineEdit('200')
+            self.nline_edit.setToolTip('Number of lines in the 2D scan')
+
+            hb = QHBoxLayout()
+            hb.addWidget(QLabel('Padding:'), stretch=1)
+            hb.addWidget(self.pad_edit, stretch=2)
+            dock.addLayout(hb)
+
+            # full 2D scan
+            hb = QHBoxLayout()
+            hb.addWidget(QLabel('Lines:'), stretch=1)
+            hb.addWidget(self.nline_edit, stretch=2)
+            dock.addLayout(hb)
+
+            def newButton(slot, txt='Run', ttip=''):
+                button = QPushButton(txt)
+                button.clicked.connect(slot)
+                button.setToolTip(ttip)
+                return button
+
+            hb = QHBoxLayout()
+            hb.addWidget(newButton(self.lineScan, 'Line',
+                'Line scan path at nearest DB row'), stretch=1)
+            hb.addWidget(newButton(self.fullScan, 'Full',
+                'Full 2D scan with the given number of lines'), stretch=1)
+            dock.addLayout(hb)
+
+
+
+    def setPar(self, obj, attr, val, tc=1):
+        setattr(obj, attr, val)
+        for _ in range(tc):
+            self.tick()
+
+    def setParFunc(self, func, val, tc=1):
+        '''Set a parameter through an accessor function'''
+        func(val)
+        self.tick()
+
+    def setTipHeight(self, H):
+        self.tip.setHeight(H)
+        self.tick()
+
+
+    def lineScan(self):
+        '''Start a line scan at the db row closest to the current tip position'''
+
+        f = .586
+        pad = float(self.pad_edit.text())
+        lo_x, hi_x = self.a*np.min(self.X), self.a*np.max(self.X)
+        y0 = round(self.tip.tipY*10/self.a,1)
+        n0, d = divmod(y0+.7, 2)
+
+        y = .1*(n0*self.b+(d>1)*self.c)
+        path = [(.1*(lo_x-pad), y), (.1*(hi_x+pad), y)]
+        self.tip.setScan(path, loop=True)
+        self.path = []
+        self.tick()
+
+    def fullScan(self):
+
+        # get scan bounds
+
+        pad = float(self.pad_edit.text())
+
+        lo_x, hi_x = self.a*np.min(self.X), self.a*np.max(self.X)
+        lo_y, hi_y = self.b*np.min(self.Y), self.b*np.max(self.Y)
+
+        lo_x, lo_y = .1*(lo_x-pad), .1*(lo_y-pad)
+        hi_x, hi_y = .1*(hi_x+pad), .1*(hi_y+pad)
+        print(lo_x, hi_x, lo_y, hi_y)
+
+        nlines = int(self.nline_edit.text())
+        assert nlines>1, '2D scan must contain at least 2 lines'
+        path = []
+        dy, y = (hi_y-lo_y)/(nlines-1), lo_y
+        for line in range(nlines):
+            path += [(lo_x,y), (hi_x,y), (hi_x, y+dy)]
+            y += dy
+            lo_x, hi_x = hi_x, lo_x
+        self.tip.setScan(path, loop=True)
+        self.path = []
+        self.tick()
+
+
+
+
 
     def _drawDBs(self):
         '''Draw all the DBs for the animator'''
@@ -197,10 +562,7 @@ class HoppingAnimator(QGraphicsView):
         self.screencapture(fname)
 
         self.rind += 1
-
-        self.rec_timer = QTimer()
-        self.rec_timer.timeout.connect(self.record)
-        self.rec_timer.start(int(1000./self.fps))
+        self.record_timer.start(int(1000./self.fps))
 
     def compile(self):
         '''compile the recording directory into a video'''
@@ -210,26 +572,48 @@ class HoppingAnimator(QGraphicsView):
         os.chdir('..')
         shutil.rmtree(self.record_dir)
 
+    def updateTip(self):
+        '''update the location of the tip graphic'''
+        self.tip_item.setPos(self.tip.tipX*10*_SF, self.tip.tipY*10*_SF)
+        self.update()
+
+    def setTipTarget(self, x, y):
+        if self.tip is not None:
+            self.tip.setTarget(.1*x, .1*y)
+            self.tick()
+
+    def pause(self):
+        '''Pause/Resume all timers'''
+        for i, t in enumerate(self.timers):
+            if self.paused:
+                t.start(self.rtimes[i])
+            else:
+                self.rtimes[i] = t.remainingTime()
+                t.stop()
+        self.paused = not self.paused
+
     def tick(self):
         ''' '''
 
-        for i,c in enumerate(self.model.charge):
-            self.dbs[i].setCharge(c)
+        if not self.paused:
+            # draw last state
+            for i,c in enumerate(self.model.charge):
+                self.dbs[i].setCharge(c)
 
+            if self.tip is not None:
+                self.updateTip()
 
-        dt = self.model.peek()[0]
-        self.model.run(dt)
+            self.update()
+            self.signal_tick.emit()
 
-        self.signal_tick.emit()
-        millis = int(dt*1000./self.rate)
+            # update hopper state
+            milli = 1.
+            while milli>0:
+                dt = self.model.step()
+                millis = dt*1000./self.rate
+                milli -= millis
 
-        #print(dt, millis)
-        if millis>=1:
-            self.timer = QTimer()
-            self.timer.timeout.connect(self.tick)
-            self.timer.start(min(millis, 10000))
-        else:
-            self.tick()
+            self.tick_timer.start(min(max(int(millis),1), 10000))
 
 
     def zoomExtents(self):
@@ -240,118 +624,59 @@ class HoppingAnimator(QGraphicsView):
 
     def mousePressEvent(self, e):
         super(HoppingAnimator, self).mousePressEvent(e)
-        item = self.itemAt(e.pos())
-        if e.button() == Qt.LeftButton:
+
+        if e.button() == Qt.MiddleButton:
+            self.panning = True
+            self.panx, self.pany = e.x(), e.y()
+            self.setCursor(Qt.ClosedHandCursor)
+            e.accept()
+
+        elif e.button() == Qt.LeftButton:
+
+            # path lists
+            if self.tip is not None:
+                if e.modifiers() & Qt.ShiftModifier:
+                    pos, dp = self.mapToScene(e.pos())/_SF, .5*self.tip_item.D/_SF
+                    if e.modifiers() & Qt.ControlModifier:
+                        self.path.append((.1*(pos.x()-dp), .1*(pos.y()-dp)))
+                    else:
+                        self.setTipTarget(pos.x()-dp, pos.y()-dp)
+                    e.accept()
+                    return
+
+            item = self.itemAt(e.pos())
             if isinstance(item, DB) and item.bg:
+                item.setCharge(not item.charged)
                 self.model.addCharge(item.xx, item.yy, pos=item.charged)
+
         elif e.button() == Qt.RightButton:
+            item = self.itemAt(e.pos())
             if isinstance(item, DB):
                 self.signal_dbtrack.emit(item.n)
+
+    def mouseMoveEvent(self, e):
+        if self.panning:
+            hsb, vsb = self.horizontalScrollBar(), self.verticalScrollBar()
+            hsb.setValue(hsb.value()+self.panx-e.x())
+            vsb.setValue(vsb.value()+self.pany-e.y())
+            self.panx, self.pany = e.x(), e.y()
+            e.accept()
+
+    def mouseReleaseEvent(self, e):
+        if e.button() == Qt.MiddleButton:
+            self.setCursor(Qt.ArrowCursor)
+            e.accept()
 
     def mouseDoubleClickEvent(self, e):
         self.mousePressEvent(e)
 
+    def keyReleaseEvent(self, e):
+        if e.key() == Qt.Key_Control:
+            if self.path:
+                self.tip.setScan(self.path, loop=True)
+                self.path = []
+                self.tick()
 
-
-
-class FieldSlider(QHBoxLayout):
-    '''Container for parameter selected by a QSlider'''
-
-    def __init__(self, txt, parent=None):
-        super(FieldSlider, self).__init__(parent)
-
-        self.txt = QLabel(txt)
-        self.out = QLabel()
-        self.fval = lambda n: n
-        self.func = lambda x: None
-
-        self.initGUI()
-
-    def initGUI(self):
-
-        self.slider = QSlider(Qt.Horizontal)
-        self.slider.setTickInterval(1)
-        self.slider.valueChanged.connect(self.valueChanged)
-        self.slider.sliderReleased.connect(self.sliderReleased)
-
-        self.addWidget(self.txt, stretch=4)
-        self.addWidget(self.slider, stretch=40)
-        self.addWidget(self.out, stretch=4)
-
-    def setBounds(self, lo, hi, inc, val):
-
-        self.lo, self.hi, self.inc = lo, hi, inc
-        self.fval = lambda n: lo+n*self.inc
-        self.val = val
-
-        self.slider.setMinimum(0)
-        self.slider.setMaximum(round((hi-lo)*1./inc))
-        self.slider.setValue(round((val-lo)/inc))
-
-    def setValue(self, val):
-        self.val = val
-        self.setValue(round((val-self.lo)/self.inc))
-
-    # event handling
-    def valueChanged(self):
-        self.val = self.fval(self.slider.value())
-        self.out.setText('{0:.3f}'.format(self.val))
-
-    def sliderReleased(self):
-        self.func(self.val)
-
-
-
-
-class FieldEdit(QHBoxLayout):
-    '''Container for parameter selected by a QLineEdit'''
-
-    def __init__(self, parent=None):
-        super(FieldEdit, self).__init__(parent)
-
-
-class DockWidget(QDockWidget):
-    ''' '''
-
-    WIDTH = 200
-
-    def __init__(self, parent=None):
-        super(DockWidget, self).__init__(parent)
-
-        self.initGUI()
-
-    def initGUI(self):
-
-        self.setMinimumWidth(self.WIDTH)
-        self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-
-        widget = QWidget(self)
-        self.vbox = QVBoxLayout(widget)
-        self.vbox.setAlignment(Qt.AlignTop)
-        self.setWidget(widget)
-
-        self.hide()
-
-    def addSlider(self, txt, lo, hi, inc, val, func):
-        '''Add a slider controlled parameter to the Dock Widget
-
-        inputs:
-            txt     : Label of the slider
-            lo      : Lowest value of the slider
-            hi      : Highest value of the slider
-            inc     : Increment between slider ticks
-            func    : When slider is updated to x, func(x) called
-        '''
-
-        slider = FieldSlider(txt)
-        slider.setBounds(lo, hi, inc, val)
-        slider.func = func
-
-        self.vbox.addLayout(slider)
-        return slider
-
-    def addWidget(self, widget, stretch=-1):
-        self.vbox.addWidget(widget, stretch=stretch)
 
 
 
@@ -370,9 +695,9 @@ class MainWindow(QMainWindow):
         self.record = record
         self.fps = fps
 
-        self.dbn = -1
+        self.dbn = -1       # tracked db index
         self.model = model
-        self.bulk = self.model.addChannel('bulk')
+
         self.animator = HoppingAnimator(model, record=record, fps=fps)
         self.animator.signal_tick.connect(self.tickSlot)
         self.animator.signal_dbtrack.connect(self.trackDB)
@@ -398,26 +723,15 @@ class MainWindow(QMainWindow):
         self.beff = QLabel()
         self.dock.addWidget(self.beff)
 
+        self.ltime = QLabel()
+        self.dock.addWidget(self.ltime)
+
         self.ecount = QLabel()
         self.dock.addWidget(self.ecount)
 
-        val, func = self.bulk.mu_on, lambda v: self.setBulkMu(v)
-        self.dock.addSlider("mu", .01, .3, .01, val, func)
-
-        val, func = np.log10(self.animator.rate), lambda r: self.setRate(10**r)
-        self.dock.addSlider("log(rate)",-3., 3., .5, val, func)
+        self.animator.passControls(self.dock)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-
-    def setBulkMu(self, v):
-        self.bulk.mu_on = v
-        self.bulk.mu_off = v
-        self.animator.tick()
-
-    def setRate(self, v):
-        self.animator.rate = v
-        self.animator.tick()
-        self.animator.tick()
 
     def tickSlot(self):
         self.ecount.setText('Number of Electrons: {0}'.format(self.model.Nel))
@@ -433,11 +747,15 @@ class MainWindow(QMainWindow):
             self.animator.tracker.track(self.animator.dbs[n])
         self.echoDB()
 
+
     def echoDB(self):
         if self.dbn < 0:
             self.beff.setText('')
+            self.ltime.setText('')
         else:
             self.beff.setText('DB-Beff: {0:.3f}'.format(self.model.beff[self.dbn]))
+            self.ltime.setText('Lifetime: {0:.3f}'.format(
+                                    self.model.lifetimes[self.dbn]))
 
 
     def keyPressEvent(self, e):
@@ -461,6 +779,10 @@ class MainWindow(QMainWindow):
             fname = os.path.join('.', fname)
             print('Screenshot saved to: {0}'.format(os.path.normpath(fname)))
             self.animator.screencapture(fname)
+        elif e.key() == Qt.Key_P:
+            self.animator.pause()
+        elif e.key() == Qt.Key_L:
+            self.animator.lineScan()
 
 
 
@@ -468,7 +790,6 @@ class MainWindow(QMainWindow):
 if __name__ == '__main__':
 
     import sys
-    sys.setrecursionlimit(50)
 
     line = [8, 10, 15, 17]
     line.insert(0, line[0]-7)
@@ -477,25 +798,36 @@ if __name__ == '__main__':
     pair = lambda n: [0, n]
 
     _or = [(0,0,0),(2,1,0),(6,1,0),(8,0,0),(4,3,0),(4,4,1)]
-    #_or.append((-2,-1,0))
-    #_or.append((10,-1,0))
+    _or.append((4,6,0))
+    # _or.append((-2,-1,0))
+    # _or.append((10,-1,0))
 
     def QCA(N):
         qca = []
         for n in range(N):
             x0 = 10*n
             qca += [(x0,0,1), (x0+3,0,1), (x0,2,0), (x0+3,2,0)]
-        #qca.append((-4,0,1))
+        qca.append((-4,0,1))
         return qca
 
-    device = QCA(5)
+    def wire(N):
+        wire = []
+        dx, dp, x = 2, 6, 0
+        for n in range(N):
+            wire += [(x,0,0), (x+dx,0,0)]
+            x += dp
+        # perturbers
+        return wire
+
+    device = line
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
-    model = HoppingModel(device, model='marcus')
-    # model.fixElectronCount(5)
-    #model.addChannel('bulk')
+    model = HoppingModel(device, model='VRH')
+    model.addChannel('bulk')
+    model.addChannel('tip')
+    model.fixElectronCount(3)
 
     app = QApplication(sys.argv)
     mw = MainWindow(model)

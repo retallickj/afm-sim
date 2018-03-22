@@ -11,13 +11,22 @@ __version__     = '1.2'
 __date__        = '2018-02-16'  # last update
 
 import numpy as np
+from scipy.special import expit
+from itertools import product
 
 
 class Channel(object):
     '''Virtual base class for all channels of charge on and off the surface'''
 
+    name = None         # channel name for search
+    scale = 1.0         # influence scale, attenuates energy/bias contributions
+
     # machine precision
     MTR     = 1e-16     # minimum tickrate, avoid zero division
+
+    # flags
+    active = False      # set True if the channel induces a bias that is state
+                        # dependent
 
     # useful lambdas
     rebirth = np.random.exponential # reset for hop-on lifetime
@@ -39,7 +48,6 @@ class Channel(object):
 
     def peek(self):
         '''Time until next charge hops onto the surface'''
-
         return self.lifetime/(self.tickrate+self.MTR)
 
     def run(self, dt):
@@ -59,6 +67,30 @@ class Channel(object):
         '''Get the hopping rates onto the channel for the given occupied DBs'''
         return self.onrates
 
+    def biases(self, occ):
+        '''Get the induced local potentials for each DB as a result of the
+        presence of the channel for the given occupation state'''
+        return np.zeros(len(self.X))
+
+    def computeDeltas(self):
+        '''Compute the matrix of energy deltas for single hopping events'''
+        if not self.active:
+            return 0
+        occ, nocc = self.occ, self.nocc
+        dG = np.zeros([len(occ), len(nocc)], dtype=float)
+
+        bias0 = self.biases(occ)[occ]
+        def dE(n, m):
+            '''Change in energy for the charge at occ[n] moving to nocc[m]'''
+            occ[n], temp = nocc[m], occ[n]
+            delta = bias0[n] - self.biases(occ)[nocc[m]]
+            occ[n] = temp
+            return delta
+
+        for n, m in product(range(len(occ)), range(len(nocc))):
+            dG[n,m] = dE(n,m)
+        return dG
+
     def update(self, occ, nocc, beff):
         '''Tell the channel which DBs are occupied and what the local levels
         of each DB are.
@@ -73,15 +105,17 @@ class Channel(object):
 class Bulk(Channel):
     '''Passive charge transfer between the surface and the bulk'''
 
-    # prefactors
-    nu_on   = 1e3   # maximum rate of hops onto the bulk
-    nu_off  = nu_on # maximum rate of hops from the bulk
+    name = 'bulk'
 
-    # energy offsets
-    mu_on   = .15     # local energy at which electrons start hopping onto Bulk
-    mu_off  = mu_on  # local energy at which electrons start hopping from Bulk
+    # prefactors
+    nu = 1e3    # maximum rate of hops between bulk and surface
+    mu = .15     # local energy at which electrons start to hop
+    lamb = 0.   # self-trapping energy
 
     alpha   = 1.e0  # damping factor for kt, higher means sharper transition
+
+    # lambdas
+    sigmoid = lambda self, x: expit(-self.alpha*x/self.kt)
 
     # inherited methods
 
@@ -95,11 +129,10 @@ class Bulk(Channel):
 
     def _compute_onrates(self, beff):
         '''Compute the hopping rates from occupied DBs to the Bulk'''
-        return self.nu_on/(1.+np.exp(self.alpha*(beff[self.occ]+self.mu_on)/self.kt))
+        return self.nu*self.sigmoid(beff[self.occ]+self.mu+self.lamb)
 
     def _compute_offrates(self, beff):
         '''Compute the hopping rates from the Bulk onto unoccupied DBs'''
-        return self.nu_off/(1.+np.exp(-self.alpha*(beff[self.nocc]+self.mu_off)/self.kt))
+        return self.nu*self.sigmoid(-(beff[self.nocc]+self.mu))
 
-channels = {'bulk': Bulk,
-            'tip':  None}
+channels = {'bulk': Bulk}
