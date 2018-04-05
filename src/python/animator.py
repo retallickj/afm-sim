@@ -392,26 +392,25 @@ class HoppingAnimator(QGraphicsView):
         # hopping model parameters
 
         mdl = self.model.model
-        if mdl.__class__.__name__ == 'MarcusModel':
-            val = self.model.model.lamb
-            func = lambda v: self.setParFunc(self.model.model.setLambda, v)
-            dock.addSlider('lambda', 0.01, 0.2, .001, val, func,
-                'Reorganization Energy: self-trapping for DB occupation')
 
-        elif mdl.__class__.__name__ == 'VRHModel':
-            val, func = mdl.lamb, lambda v: self.setPar(mdl, 'lamb', v)
-            dock.addSlider('lambda', 0.01, 0.2, .001, val, func,
-                'Reorganization Energy: self-trapping for DB occupation')
+        val = mdl.lamb
+        func = lambda v: self.setParFunc(mdl.setLambda, v)
+        dock.addSlider('lambda', 0.001, 0.3, .001, val, func,
+            'Reoranization Energy: thermal barrier for hopping')
 
-            val = np.log10(mdl.nu)
-            func = lambda v: self.setParFunc(mdl.setNu, 10**v)
-            dock.addSlider('log(nu)', -1, 5, .5, val, func,
-                'Hopping rate prefactor')
+        val = np.log10(mdl.prefact)
+        func = lambda v: self.setParFunc(mdl.setPrefactor, 10**v)
+        dock.addSlider('log(nu)', -5, 15, .2, val, func,
+            'Hopping rate prefactor')
 
-            val, func = mdl.ktd, lambda v: self.setPar(mdl, 'ktd', v)
-            dock.addSlider('ktd', 0.01, 1, .01, val, func,
-                'Inverse kT attenuation, lower increases effective temperature')
+        val = mdl.alph
+        func = lambda v: self.setParFunc(mdl.setAttenuation, v)
+        dock.addSlider('alpha', 1, 1e2, .1, val, func,
+            'Attenuation length, in angstroms')
 
+        val, func = mdl.ktf, lambda v: self.setPar(mdl, 'ktf', v)
+        dock.addSlider('ktf', 1., 100., .1, val, func,
+            'Thermal broadening factor, multiplier for thermal energy')
 
         # bulk controls
         if self.bulk is not None:
