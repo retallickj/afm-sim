@@ -8,11 +8,13 @@ Real-time animation of DB arrangements
 __author__      = 'Jake Retallick'
 __copyright__   = 'MIT License'
 __version__     = '1.2'
-__date__        = '2018-02-15'  # last update
+__date__        = '2018-03-26'  # last update
 
 import shutil, os
 import numpy as np
 from itertools import product
+import json
+from subprocess import Popen
 
 from PyQt5.QtCore import (Qt, QTimer, QThread, pyqtSignal, QDateTime)
 from PyQt5.QtGui import (QPen, QBrush, QColor, QPainter, QImage)
@@ -22,6 +24,54 @@ from hopper import HoppingModel
 
 
 _SF = 50     # scale factor
+
+
+class Logger(object):
+    ''' '''
+
+    _log_file = 'log.dat'
+    _temp_file = '.temp_log'
+
+    def __init__(self, root, view=True):
+        ''' '''
+
+        print('Logger started')
+        self.root = os.path.abspath(root)
+        self.log_fn = os.path.join(self.root, self._log_file)
+
+        if not os.path.exists(self.root):
+            print('Logger creating directory: {0}'.format(self.root))
+            os.makedirs(self.root)
+
+        self.temp_fn = os.path.join(self.root, self._temp_file)
+        self.view, self.viewing = view, False
+
+    def close(self):
+        '''Cleanup the log directory. Deletes the previous log file'''
+
+        print('Logger being closed')
+        self.view_fp.close()
+
+    def log(self, data):
+        '''Log the given dictionary to the next file'''
+
+        with open(self.temp_fn, 'w') as fp:
+            json.dump(data, fp, indent=1)
+        os.rename(self.temp_fn, self.log_fn)
+
+        if self.view and not self.viewing:
+            self.startViewer()
+
+    def startViewer(self):
+        ''' '''
+        print('Starting Viewer')
+        self.viewing = True
+        self.view_fp = open(os.path.join(self.root, 'stdout'), 'a')
+        Popen(['python3', 'lineview.py', self.log_fn],
+                    stdout=self.view_fp, stderr=self.view_fp)
+
+
+
 
 class Thread(QThread):
     def __init__(self, func):
@@ -240,6 +290,7 @@ class HoppingAnimator(QGraphicsView):
 
     bgcol = QColor(29, 35, 56)  # background color
     record_dir = './.temp_rec/'
+    log_dir = './.temp/'
 
     signal_tick = pyqtSignal()
     signal_dbtrack = pyqtSignal(int)
@@ -289,9 +340,18 @@ class HoppingAnimator(QGraphicsView):
         self.paused = False
         self.rtimes = [0,]*len(self.timers)
 
+        self.logging = True
+        self.logger = Logger(self.log_dir)
+
         self.panning = False
         self.panx, self.pany = 0., 0.
         self.path = []
+
+        self.dbn = -1
+
+    def __del__(self):
+        #super(HoppingAnimator, self).__del__()
+        del(self.logger)
 
     def _initGUI(self):
         '''Initialise the animator window'''
@@ -405,10 +465,17 @@ class HoppingAnimator(QGraphicsView):
             dock.addSlider('H', 100, 1000, 10, val, func,
                 'Tip height in pm')
 
-            val = self.tip.tipR
-            func = lambda R: self.setParFunc(self.tip.setRadius, R)
-            dock.addSlider('R', 1, 50, 1, val, func,
-                'Tip radius in nm')
+            val = self.tip.tipR1
+            func = lambda R: self.setParFunc(
+                        lambda r: self.tip.setRadius(icibb=r), R)
+            dock.addSlider('ICIBB R', 1, 50, 1, val, func,
+                'Tip radius in nm for ICIBB')
+
+            val = self.tip.tipR2
+            func = lambda R: self.setParFunc(
+                        lambda r: self.tip.setRadius(tibb=r), R)
+            dock.addSlider('TIBB R', 1, 200, 1, val, func,
+                'Tip radius in nm for TIBB')
 
             val, func = self.tip.rate, lambda v: self.setPar(self.tip, 'rate', v)
             dock.addSlider('rate', 1., 50., .5, val, func,
@@ -606,6 +673,10 @@ class HoppingAnimator(QGraphicsView):
             self.update()
             self.signal_tick.emit()
 
+            # log current state
+            if self.logging:
+                self.log()
+
             # update hopper state
             milli = 1.
             while milli>0:
@@ -614,6 +685,41 @@ class HoppingAnimator(QGraphicsView):
                 milli -= millis
 
             self.tick_timer.start(min(max(int(millis),1), 10000))
+
+    def log(self):
+        ''' '''
+
+        out = {'x': (self.a*self.X).tolist(),           # db positions, x
+               'y': (self.b*self.Y).tolist(),           # db positions, y
+               'charge': self.model.charge.tolist(),    # charge state
+               'bias': self.model.beff.tolist(),        # db local biases
+               }
+
+        if hasattr(self.model.model, 'lamb'):
+            out['lamb'] = self.model.model.lamb
+
+        if self.bulk is not None:
+            out['mu'] = self.bulk.mu
+
+        if self.tip is not None:
+            tipd = {'x': 10*self.tip.tipX,
+                    'y': 10*self.tip.tipY,
+                    'R1': 10*self.tip.tipR1,
+                    'R2': 10*self.tip.tipR2,
+                    'H': 10*self.tip.tipH}
+
+            out['tip'] = tipd
+
+        # tracker information
+        out['dbn'] = self.dbn
+        if self.dbn != -1 and self.model.charge[self.dbn]:
+            ind, = np.where(self.model.state==self.dbn)
+            tbias = np.zeros(self.model.N, dtype=float)
+            nocc = self.model.state[self.model.Nel:]
+            tbias[nocc] = self.model.beff[self.dbn] - self.model.dG[ind,:].reshape(-1,)
+            out['tbias'] = tbias.tolist()
+
+        self.logger.log(out)
 
 
     def zoomExtents(self):
@@ -741,6 +847,7 @@ class MainWindow(QMainWindow):
         if self.dbn == n:
             n = -1
         self.dbn = n
+        self.animator.dbn = n
         if n<0:
             self.animator.tracker.hide()
         else:
@@ -761,6 +868,7 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, e):
 
         if e.key() == Qt.Key_Q:
+            self.animator.logger.close()
             if self.record:
                 self.animator.compile()
             self.close()
@@ -799,7 +907,7 @@ if __name__ == '__main__':
 
     _or = [(0,0,0),(2,1,0),(6,1,0),(8,0,0),(4,3,0),(4,4,1)]
     _or.append((4,6,0))
-    # _or.append((-2,-1,0))
+    _or.append((-2,-1,0))
     # _or.append((10,-1,0))
 
     def QCA(N):
@@ -827,7 +935,7 @@ if __name__ == '__main__':
     model = HoppingModel(device, model='VRH')
     model.addChannel('bulk')
     model.addChannel('tip')
-    model.fixElectronCount(3)
+    #model.fixElectronCount(3)
 
     app = QApplication(sys.argv)
     mw = MainWindow(model)

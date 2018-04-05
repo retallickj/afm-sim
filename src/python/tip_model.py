@@ -33,8 +33,11 @@ class TipModel(Channel):
     Kc   = 1e9*const.e/(4*np.pi*const.epsilon_0)   # Coulomb strength, eV.[nm]
     epsr = 9.0      # dielectric constant for surface-tip
 
+    dH = 0.038      # height delta between DB0 and DB-, lattice relaxation, nm
+
     # experimental fit parameters
-    tipR    = 5.    # tip radius, nm
+    tipR1   = 5.    # tip radius for ICIBB, nm
+    tipR2   = 50    # tip radius for TIBB, nm
     tipH    = .2    # tip-surface separation, nm
     tipDW   = 0.65  # actual difference in tip-sample work-functions, eV
 
@@ -109,8 +112,8 @@ class TipModel(Channel):
 
     def update(self, occ, nocc, beff):
         self.occ, self.nocc = occ, nocc
-        A = np.sqrt(self.R**2 + (self.tipR+self.tipH)**2)
-        self.baserates = self.TR0*np.exp(-self.k_tip_DBm*(A-self.tipR))
+        A = np.sqrt(self.R**2 + (self.tipR1+self.tipH)**2)
+        self.baserates = self.TR0*np.exp(-self.k_tip_DBm*(A-self.tipR1))
         self.offrates = self._compute_offrates(beff)
         self.onrates = self._compute_onrates(beff)
         self.tickrate = self.offrates.sum()
@@ -148,9 +151,11 @@ class TipModel(Channel):
         self.R = np.sqrt(self.dX**2 + self.dY**2)   # DBs to tip apex
         self.TIBB = None
 
-    def setRadius(self, R):
+    def setRadius(self, tibb=None, icibb=None):
         '''Set the tip radius in nm, make appropriate pre-calcs'''
-        self.tipR = R
+        print(tibb, icibb)
+        self.tipR2 = self.tipR2 if tibb is None else tibb
+        self.tipR1 = self.tipR1 if icibb is None else icibb
         self._updateTIBB()
 
     def setHeight(self, H):
@@ -171,15 +176,17 @@ class TipModel(Channel):
             self.TIBB = self.tibb_fit(self.R)
 
         # image charge locations
-        facts = self.tipR**2/(self.R[occ]**2 + (self.tipR+self.tipH)**2)
+        facts = self.tipR1**2/(self.R[occ]**2 + (self.tipR1+self.tipH)**2)
         posIC = [self.X[occ]-(1-facts)*self.dX[occ],
                  self.Y[occ]-(1-facts)*self.dY[occ],
-                 (1-facts)*(self.tipH+self.tipR)]
+                 (1-facts)*(self.tipH+self.tipR1)]
 
         # image charge induced band bending
         dX = self.X - posIC[0].reshape(-1,1)
         dY = self.Y - posIC[1].reshape(-1,1)
-        R, Q = np.sqrt(dX**2+dY**2+posIC[2].reshape(-1,1)**2), np.sqrt(facts)
+        dZ = self.dH*np.ones(self.X.shape, dtype=float)
+        dZ[occ] = 0.
+        R, Q = np.sqrt(dX**2+dY**2+dZ**2+posIC[2].reshape(-1,1)**2), np.sqrt(facts)
         ICIBB = self.Kc*np.dot(Q, 1/R)/self.epsr
 
         return -(self.TIBB-ICIBB)
@@ -208,7 +215,7 @@ class TipModel(Channel):
     def _updateTIBB(self):
         '''update the TIBB interpolator for new tip radius or height'''
 
-        R, H, R0, femR = self.tipR, self.tipH, self.tipR0, self.femR
+        R, H, R0, femR = self.tipR2, self.tipH, self.tipR0, self.femR
         p0, p1, p2 = self.tibbPars
         factR = ((R+H)/(R0+H))**p0*(1.-(R-R0)/(R+H)*np.exp(-(p1*femR/R)**p2))
         factH = self.TIBBvH_fit(H)/self.femTIBB[0]

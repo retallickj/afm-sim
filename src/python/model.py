@@ -62,7 +62,7 @@ class VRHModel(BaseModel):
     '''Variable-Range Hopping model for hopping rates'''
 
     # model-specific parameters
-    alph    = 1e-1      # inverse attenuation length, 1/angstroms
+    alph    = 5e-1      # inverse attenuation length, 1/angstroms
     nu      = 1.e11     # scaling prefactor for rates
     lamb    = 0.01      # self-trapping energy, eV
     ktd     = 1.0       # inverse damping for kT

@@ -35,8 +35,8 @@ class HoppingModel:
     MTR     = 1e-16         # for tickrates division
 
     # energy parameters
-    debye   = 25.           # debye screening length, angstroms
-    erfdb   = 2.            # erf based screening length
+    debye   = 50.           # debye screening length, angstroms
+    erfdb   = 5.            # erf based screening length
     eps0    = 8.854e-12     # F/m
     q0      = 1.602e-19     # C
     kb      = 8.617e-05     # eV/K
