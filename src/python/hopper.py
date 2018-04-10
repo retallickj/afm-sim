@@ -11,7 +11,7 @@ from __future__ import print_function
 __author__      = 'Jake Retallick'
 __copyright__   = 'MIT License'
 __version__     = '1.2'
-__date__        = '2018-04-09'  # last update
+__date__        = '2018-04-10'  # last update
 
 import numpy as np
 from scipy.special import erf
@@ -302,33 +302,40 @@ class HoppingModel:
                 self.ch_tickrates[ij] = sum(D.values())
 
     def peek(self):
-        '''Return the time before the next tunneling event and the index of the
-        event. Does not account for time evolution of channel bias contributions
+        '''Return the time before the next tunneling event and information
+        about theevent. Does not account for time evolution of channel bias
+        contributions: i.e. all rates assumed fixed
 
         output:
             dt  : time to next hopping event, s
-            ind : index of event: if ind < self.Nel the electron at state[ind]
-                 hops, otherwise an electron hops onto the surface from
-                 channel (ind-self.Nel).
+            T   : type of event:
+            ind : index of event
         '''
 
         occ = self.state[:self.Nel]
 
-        times = []
-        times.append(enumerate(self.lifetimes[occ]/(self.tickrates+self.MTR)))
+        times = []  # list of ((T,ind),dt) generators/iterables
+
+        # hopping events
+        h_times = ([('hop',occ[i]),t] for i,t in enumerate(
+                    self.lifetimes[occ]/(self.tickrates+self.MTR)))
+        times.append(h_times)
+
         # optional cohopping
         if self.enable_cohop:
-            ch_times = {ij: self.ch_lifetimes[ij]/(self.ch_tickrates[ij]+self.MTR)
-                                            for ij in self.ch_tickrates}
+            ch_tmap = lambda ij: self.ch_lifetimes[ij]/(self.ch_tickrates[ij]+self.MTR)
+            ch_times = {('chop',ij): ch_tmap(ij) for ij in self.ch_tickrates}
             times.append(ch_times.items())
+
         # optional channel hopping
         if self.channels and not self.fixed_pop:
-            ch_times = [channel.peek() for channel in self.channels]
-            times.append(enumerate(ch_times, self.Nel))
+            chan_times = ([('chan', i),t] for i,t in enumerate(
+                                ch.peek() for ch in self.channels))
+            times.append(chan_times)
 
-        ind, dt = min(chain(*times), key=lambda x:x[1])
+        (T, ind), dt = min(chain(*times), key=lambda x:x[1])
 
-        return dt, ind
+        return dt, T, ind
 
     def burn(self, nhops):
         '''Burns through the given number of hopping events'''
@@ -352,17 +359,19 @@ class HoppingModel:
             tick    : time advancement
         '''
 
+        import pdb; pdb.set_trace()
+
         # figure out the time step
-        dt_hop, ind = self.peek()   # hopping events
+        dt_hop, T, ind = self.peek()   # hopping events
         dt_ch = min(ch.tick() for ch in self.channels)
 
         # advance lifetimes and channel states
-        tick = min(dt, dt_hop, dt_ch)
+        tick = max(min(dt, dt_hop, dt_ch), self.MTR)
         self._advance(tick)
 
         # handle hops
-        if dt_hop==tick:
-            self._hop_handler(ind)
+        if dt_hop <= min(dt, dt_ch)+self.MTR:
+            self._hop_handler(T, ind)
         self.update()
 
         return tick
@@ -464,16 +473,20 @@ class HoppingModel:
             for ij, tickrate in self.ch_tickrates.items():
                 self.ch_lifetimes[ij] -= dt*tickrate
 
-    def _hop_handler(self, ind):
+    def _hop_handler(self, T, ind):
         '''Handle all the possible hopping cases.'''
 
-        print('Hop index: ', ind)
-        if isinstance(ind, tuple):
+        print('Hopping type: {0} :: {1}'.format(T, ind))
+
+        # could be made more concise with a static function map
+        if T == 'hop':
+            self._hop(ind)
+        elif T == 'chop'
             self._cohop(ind)
-        elif ind < self.Nel:
-            self._hop(self.state[ind])
+        elif T == 'chan':
+            self._channel_pop(ind)
         else:
-            self._channel_pop(ind-self.Nel)
+            raise KeyError('Unrecognized hopping type')
         self.energy = self.computeEnergy()
 
     def _cohop(self, ij):
