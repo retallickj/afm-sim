@@ -85,7 +85,7 @@ class Channel(object):
             return 0
         occ = self.occ.tolist()
         occ[occ.index(n)]=m
-        return self.biases(self.occ)[n]-self.biases(nocc)[m]
+        return self.biases(self.occ)[n]-self.biases(occ)[m]
 
     def computeDeltas(self):
         '''Compute the matrix of energy deltas for single hopping events'''

@@ -57,6 +57,14 @@ class Logger(object):
 
         with open(self.temp_fn, 'w') as fp:
             json.dump(data, fp, indent=1)
+
+        while True:
+            try:
+                os.remove(self.log_fn)
+                break
+            except:
+                pass
+
         os.rename(self.temp_fn, self.log_fn)
 
         if self.view and not self.viewing:

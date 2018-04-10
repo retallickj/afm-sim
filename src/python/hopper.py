@@ -6,10 +6,12 @@ Simulator for the non-equilibrium surface dynamics of charges in QSi's DB
 arrangements
 '''
 
+from __future__ import print_function
+
 __author__      = 'Jake Retallick'
 __copyright__   = 'MIT License'
 __version__     = '1.2'
-__date__        = '2018-02-22'  # last update
+__date__        = '2018-04-09'  # last update
 
 import numpy as np
 from scipy.special import erf
@@ -18,15 +20,19 @@ from scipy.special import erf
 from model import models as Models
 from channel import Channel, channels as Channels
 from tip_model import TipModel
+from clocking import Clock
 
-from itertools import combinations, chain
+from itertools import combinations, chain, product
 from collections import defaultdict
 
 from time import clock as tick
 import sys
 
+from pprint import pprint
+
 # add non-standard channels
 Channels['tip'] = TipModel
+Channels['clock'] = Clock
 
 class HoppingModel:
     '''Time dependent surface hopping model for charge transfer in DBs'''
@@ -55,7 +61,11 @@ class HoppingModel:
     free_rho = 0.5       # filling density if not fixed_pop (Nel = round(N*free_rho))
     burn_count = 0      # number of burns hops per db
 
-    enable_cohop = False      # enable cohopping
+    enable_cohop = False     # enable cohopping
+    enable_FRH = True       # enable finite range hopping
+
+    hop_range = 20      # maximum range for hopping, angstroms
+    cohop_range = 20    # coherance range for cohopping pairs, angstroms
 
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
@@ -93,6 +103,9 @@ class HoppingModel:
         dX = self.a*(self.X-self.X.reshape(-1,1))
         dY = self.b*(self.Y-self.Y.reshape(-1,1))
         self.R = np.sqrt(dX**2+dY**2)
+
+        # prepare FRH parameters
+        self._prepareFRH()
 
         # electrostatic couplings
         self.V = self.coulomb(np.eye(self.N)+self.R)
@@ -202,9 +215,9 @@ class HoppingModel:
         # lifetimes[i] is the lifetime of an electron at the i^th DB
         self.lifetimes = np.array([self.rebirth() for _ in range(self.N)])
 
-        # cohopping setup, cohop_lt[ij] is the lifetime of the electrons at DBs i,j
+        # ch_lifetimes_lt[ij] is the lifetime of the electrons at DBs i,j
         if self.enable_cohop:
-            self.cohop_lt = {ij: self.rebirth() for ij in self.cohop_tickrates}
+            self.ch_lifetimes = {ij: self.rebirth() for ij in self.ch_targets}
 
         self.energy = self.computeEnergy()
 
@@ -215,7 +228,7 @@ class HoppingModel:
             self.burn(self.burn_count*self.N)
 
 
-    def computeBeff(self, occ, wch=True):
+    def computeBeff(self, occ, wch=False):
         '''Compute the effective bias at each site for the given occupation.
         Optional include channel contributions'''
 
@@ -223,6 +236,7 @@ class HoppingModel:
         if wch:
             beff += sum(ch.scale*ch.biases(occ) for ch in self.channels)
         return beff
+
 
     def update(self):
         '''Update the energy deltas, tunneling rates, and tick rates'''
@@ -240,40 +254,54 @@ class HoppingModel:
         for channel in self.channels:
             channel.update(occ, nocc, beff)
 
-        # energy deltas
-        NEW = True
-        self.dG = np.zeros([self.Nel, self.N-self.Nel], dtype=float)
-        for n, src in enumerate(occ):
-            tbeff = self.computeBeff(np.delete(occ, n), wch=not NEW)
-            self.dG[n,:] = tbeff[src] - tbeff[nocc]
-        if NEW:
-            self.dG += sum(ch.scale*ch.computeDeltas() for ch in self.channels)
+        self.beff = beff
 
-        self.beff = beff    # store for dE on channel hop
-        self.trates = self.model.rates(self.dG, occ, nocc)
-        self.tickrates = np.sum(self.trates, axis=1)
+        # energy deltas associated with single charge hops
+        self.dG = defaultdict(dict)
+        for ind, src in enumerate(occ):
+            tbeff = self.computeBeff(np.delete(occ, ind))
+            for trg in self.h_targets[src]:
+                if not self.charge[trg]:
+                    self.dG[src][trg] = tbeff[src]-tbeff[trg]
+                    self.dG[src][trg] += sum(ch.scale*ch.computeDelta(src, trg)
+                                                for ch in self.channels)
+
+        # single charge hopping rates
+        self.trates = defaultdict(dict)
+        for src, D in self.dG.items():
+            for trg, dg in D.items():
+                self.trates[src][trg] = self.model.rate(dg, src, trg)
+
+        # tickrates for each occupying charge
+        self.tickrates = np.zeros(self.Nel, dtype=float)
+        for i, src in enumerate(occ):
+            if src in self.trates:
+                self.tickrates[i] = sum(self.trates[src].values())
+
         if self.channels and not self.fixed_pop:
             self.crates = np.array([channel.rates() for channel in self.channels]).T
             self.tickrates += np.sum(self.crates, axis=1)
 
-        #t1, t = tick()-t, tick()
-
         # cohopping
         if self.enable_cohop:
-            self.cohop_rates = defaultdict(dict)        # hopping rate for each cohop
-            self.cohop_tickrates = defaultdict(dict)    # tickrate per electron pair
-            self.cohop_dG = defaultdict(dict)           # energy delta for each cohop
-            for ij in combinations(range(self.Nel), 2):
-                for kl in combinations(range(self.N-self.Nel), 2):
-                    (i,j),(k,l) = ij, kl
-                    sites = self.state[[i,j, self.Nel+k, self.Nel+l]]
-                    dG = self._compute_cohop_dG(i,j,k,l, *sites)
-                    self.cohop_rates[ij][kl] = self.model.cohopping_rate(dG,*sites)
-                    self.cohop_dG[ij][kl] = dG
-                self.cohop_tickrates[ij] = sum(self.cohop_rates[ij].values())
 
-        #self.vprint('update :: hopping = {0:.3e} <::> cohop = {1:.3e}'.format(t1, tick()-t))
+            self.ch_trates = defaultdict(dict)  # hopping rate for each cohop
+            self.ch_dG = defaultdict(dict)      # energy delta for each cohop
 
+            for s1 in self.trates:              # src with available targets
+                for s2 in self.ch_pairs[s1]:    # cohopping partner: s2>s1
+                    if not s2 in self.trates: continue  # partner has a target
+                    for t1, t2 in self.ch_targets[(s1,s2)]:
+                        if self.charge[t1] or self.charge[t2]: continue
+                        dg = self._compute_cohop_dG(s1,s2,t1,t2)
+                        ij, kl = (s1,s2), (t1,t2)
+                        self.ch_dG[ij][kl] = dg
+                        self.ch_trates[ij][kl] = \
+                                self.model.cohopping_rate(dg, ij, kl)
+            # tickrates for each cohopping
+            self.ch_tickrates = {}
+            for ij, D in self.ch_trates.items():
+                self.ch_tickrates[ij] = sum(D.values())
 
     def peek(self):
         '''Return the time before the next tunneling event and the index of the
@@ -292,9 +320,9 @@ class HoppingModel:
         times.append(enumerate(self.lifetimes[occ]/(self.tickrates+self.MTR)))
         # optional cohopping
         if self.enable_cohop:
-            cohop_times = {ij: self.cohop_lt[ij]/(self.cohop_tickrates[ij]+self.MTR)
-                                                    for ij in self.cohop_tickrates}
-            times.append(cohop_times.items())
+            ch_times = {ij: self.ch_lifetimes[ij]/(self.ch_tickrates[ij]+self.MTR)
+                                            for ij in self.ch_tickrates}
+            times.append(ch_times.items())
         # optional channel hopping
         if self.channels and not self.fixed_pop:
             ch_times = [channel.peek() for channel in self.channels]
@@ -325,6 +353,9 @@ class HoppingModel:
         returns:
             tick    : time advancement
         '''
+
+        print('\n\n###\n')
+        # pprint({ij: self.ch_lifetimes[ij] for ij in self.ch_trates})
 
         # figure out the time step
         dt_hop, ind = self.peek()   # hopping events
@@ -375,7 +406,7 @@ class HoppingModel:
 
         inds = self.state[:self.Nel] if occ is None else occ
         beff = self.bias - .5*np.sum(self.V[:,inds], axis=1)
-        beff += sum(ch.biases(inds) for ch in self.channels)
+        beff += sum(ch.scale*ch.biases(inds) for ch in self.channels)
         return -np.sum(beff[inds])
 
     def addCharge(self, x, y, pos=True):
@@ -401,6 +432,27 @@ class HoppingModel:
         self.Y = np.array([y+f*bool(b) for y,b in zip(Y,B)]).reshape([-1,])
         self.N = len(self.X)
 
+
+    def _prepareFRH(self):
+        '''Prepare necessaty parameters for finite range hopping'''
+
+        # identify possible hopping pairs
+        self.h_targets = {i: set() for i in range(self.N)}
+        for i,j in zip(*np.where(self.R < self.hop_range)):
+            if i==j: continue
+            self.h_targets[i].add(j)
+
+        # identify cohopping pairs
+        if self.enable_cohop:
+            self.ch_targets, self.ch_pairs = defaultdict(set), defaultdict(set)
+            for i,j in zip(*np.where(self.R < self.cohop_range)):
+                if i>=j: continue
+                for k,l in product(self.h_targets[i], self.h_targets[j]):
+                    if k==j or l==i or k==l: continue
+                    self.ch_targets[(i,j)].add((k,l) if k<l else (l,k))
+                if (i,j) in self.ch_targets:
+                    self.ch_pairs[i].add(j)
+
     def _advance(self, dt):
         '''Advance the lifetimes and channels by the given time'''
 
@@ -410,8 +462,8 @@ class HoppingModel:
             for channel in self.channels:
                 channel.run(dt)
         if self.enable_cohop:
-            for ij, tickrate in self.cohop_tickrates.items():
-                self.cohop_lt[ij] -= dt*tickrate
+            for ij, tickrate in self.ch_tickrates.items():
+                self.ch_lifetimes[ij] -= dt*tickrate
 
     def _hop_handler(self, ind):
         '''Handle all the possible hopping cases.'''
@@ -428,14 +480,13 @@ class HoppingModel:
         '''Perform a cohop with the given pair i,j'''
 
         # determine targets
-        targets, P = zip(*self.cohop_rates[ij].items())
+        targets, P = zip(*self.ch_trates[ij].items())
         ind = np.random.choice(range(len(targets)), p=np.array(P)/sum(P))
-        k, l = targets[ind]
+        (i,j), (k,l) = ij, targets[ind]
 
         # modify charge state
-        self._surface_hop(ij[0],k)
-        self._surface_hop(ij[1],l)
-
+        self._surface_hop(i,k)
+        self._surface_hop(j,l)
 
     def _hop(self, ind):
         '''Perform a hop with the given electron'''
@@ -443,7 +494,12 @@ class HoppingModel:
         src = self.state[ind]   # index of the electron to hop
 
         # determine target
-        P, targets = self.trates[ind], list(range(self.N-self.Nel))
+        if src in self.trates:
+            targets, P = zip(*self.trates[src].items())
+        else:
+            targets, P = [], []
+        targets, P = list(targets), np.array(P)
+
         if self.channels and not self.fixed_pop:
             P = np.hstack([P, [np.sum(self.crates[ind])]])
             targets.append(-1)
@@ -453,6 +509,7 @@ class HoppingModel:
         if t_ind < 0:
             self._channel_hop(ind)
         else:
+            t_ind = int(np.where(self.state==t_ind)[0])
             self._surface_hop(ind, t_ind)
 
     def _channel_hop(self, ind):
@@ -464,46 +521,47 @@ class HoppingModel:
 
         self.Nel -= 1
 
-        # forget all cohopping lifetimes relatted to self.Nel-1
         if self.enable_cohop:
-            for i in range(self.Nel):
-                ij = (i,self.Nel)
-                if ij in self.cohop_lt:
-                    del self.cohop_lt[ij]
+            self._ch_rebirth(src)
+
 
     def _channel_pop(self, cind):
         '''Hop an electron from the give channel onto the surface'''
+
         ind = self.channels[cind].pop()+self.Nel
         target = self.state[ind]
         self.charge[target] = 1
         self.lifetimes[target] = self.rebirth()
         self.state[self.Nel], self.state[ind] = self.state[ind], self.state[self.Nel]
 
-        # add on new set of cohopping lifetimes
-        if self.enable_cohop:
-            for i in range(self.Nel):
-                self.cohop_lt[(i,self.Nel)] = self.rebirth()
-
         self.Nel += 1
 
     def _surface_hop(self, ind, t_ind):
         '''Hop the electron given by ind to the empty db given by t_ind'''
 
-        print('Surface Hop: {0} -> {1} :: dE = {2:.3f}'.format(
-                self.state[ind], self.state[t_ind], self.dG[ind, t_ind]))
-
-        src, target = self.state[ind], self.state[self.Nel+t_ind]
+        src, target = self.state[ind], self.state[t_ind]
         self.charge[src], self.charge[target] = 0, 1
-        self.state[ind], self.state[self.Nel+t_ind] = target, src
+        self.state[ind], self.state[t_ind] = target, src
         self.lifetimes[target] = self.rebirth()
 
         # reset all cohopping times involving ind
         if self.enable_cohop:
-            for ij in self.cohop_lt:
-                if ind in ij:
-                    self.cohop_lt[ij]= self.rebirth()
+            self._ch_rebirth(src)
 
-    def _compute_cohop_dG(self, i, j, k, l, si, sj, sk, sl):
-        return self.dG[i,k]+self.dG[j,l] \
-            + (self.V[sk,sl]+self.V[si,sj]) \
-            - (self.V[si,sl]+self.V[sj,sk])
+    def _ch_rebirth(self, db):
+        '''reset tall the cohopping lifetimes related to the given DB'''
+
+        # n < db
+        for n in range(db):
+            if db in self.ch_pairs[n]:
+                self.ch_lifetimes[(n,db)] = self.rebirth()
+
+        # db < n
+        for n in self.ch_pairs[db]:
+                self.ch_lifetimes[(db,n)] = self.rebirth()
+
+
+    def _compute_cohop_dG(self, i, j, k, l):
+        return self.dG[i][k]+self.dG[j][l] \
+            + (self.V[k,l]+self.V[i,j]) \
+            - (self.V[i,l]+self.V[j,k])
