@@ -210,8 +210,6 @@ class HoppingModel:
         for channel in self.channels:
             channel.setup(X, Y, kt)
 
-        self.update()
-
         # lifetimes[i] is the lifetime of an electron at the i^th DB
         self.lifetimes = np.array([self.rebirth() for _ in range(self.N)])
 
@@ -219,8 +217,8 @@ class HoppingModel:
         if self.enable_cohop:
             self.ch_lifetimes = {ij: self.rebirth() for ij in self.ch_targets}
 
+        self.update()
         self.energy = self.computeEnergy()
-
         self.initialised = True
 
         if charges is None:
@@ -354,9 +352,6 @@ class HoppingModel:
             tick    : time advancement
         '''
 
-        print('\n\n###\n')
-        # pprint({ij: self.ch_lifetimes[ij] for ij in self.ch_trates})
-
         # figure out the time step
         dt_hop, ind = self.peek()   # hopping events
         dt_ch = min(ch.tick() for ch in self.channels)
@@ -389,16 +384,16 @@ class HoppingModel:
         # return the charge state of the requested db
         return self.charge[ind]
 
-    def getLifetime(self, n):
+    def getLifetime(self, db):
         '''Get the expected lifetime, in seconds, of the given DB'''
         try:
-            ind = int(np.where(self.state==n)[0])
+            ind = self._index(db)
         except:
             print('Invalid DB index')
             return None
 
         if ind < self.Nel:
-            return self.lifetimes[n]/(self.MTR+self.tickrates[ind])
+            return self.lifetimes[db]/(self.MTR+self.tickrates[ind])
         return 0.
 
     def computeEnergy(self, occ=None):
@@ -421,6 +416,10 @@ class HoppingModel:
 
 
     # internal methods
+
+    def _index(self, db):
+        '''Get the index of the db in self.state'''
+        return int(np.where(self.state==db)[0])
 
     def _parseX(self, X):
         '''Parse the DB location information'''
@@ -468,10 +467,11 @@ class HoppingModel:
     def _hop_handler(self, ind):
         '''Handle all the possible hopping cases.'''
 
+        print('Hop index: ', ind)
         if isinstance(ind, tuple):
             self._cohop(ind)
         elif ind < self.Nel:
-            self._hop(ind)
+            self._hop(self.state[ind])
         else:
             self._channel_pop(ind-self.Nel)
         self.energy = self.computeEnergy()
@@ -484,14 +484,14 @@ class HoppingModel:
         ind = np.random.choice(range(len(targets)), p=np.array(P)/sum(P))
         (i,j), (k,l) = ij, targets[ind]
 
+        print(targets, P, i,j,k,l)
+
         # modify charge state
         self._surface_hop(i,k)
         self._surface_hop(j,l)
 
-    def _hop(self, ind):
-        '''Perform a hop with the given electron'''
-
-        src = self.state[ind]   # index of the electron to hop
+    def _hop(self, src):
+        '''Perform a hop from the given DB'''
 
         # determine target
         if src in self.trates:
@@ -500,22 +500,24 @@ class HoppingModel:
             targets, P = [], []
         targets, P = list(targets), np.array(P)
 
+        ind = self._index(src)
         if self.channels and not self.fixed_pop:
             P = np.hstack([P, [np.sum(self.crates[ind])]])
             targets.append(-1)
-        t_ind = np.random.choice(targets,p=P/P.sum())
+        trg = np.random.choice(targets,p=P/P.sum())
+
+        print('Hopping db from src {0} to trg {1}'.format(src, trg))
 
         # modify the charge state
-        if t_ind < 0:
-            self._channel_hop(ind)
+        if trg < 0:
+            self._channel_hop(src)
         else:
-            t_ind = int(np.where(self.state==t_ind)[0])
-            self._surface_hop(ind, t_ind)
+            self._surface_hop(src, trg)
 
-    def _channel_hop(self, ind):
+    def _channel_hop(self, src):
         '''Hop the electron given off the surface to some channel'''
 
-        src = self.state[ind]
+        ind = self._index(src)
         self.charge[src] = 0
         self.state[ind], self.state[self.Nel-1] = self.state[self.Nel-1], self.state[ind]
 
@@ -536,15 +538,16 @@ class HoppingModel:
 
         self.Nel += 1
 
-    def _surface_hop(self, ind, t_ind):
-        '''Hop the electron given by ind to the empty db given by t_ind'''
+    def _surface_hop(self, src, trg):
+        '''Hop a charge from the source db to the given target'''
 
-        src, target = self.state[ind], self.state[t_ind]
-        self.charge[src], self.charge[target] = 0, 1
-        self.state[ind], self.state[t_ind] = target, src
-        self.lifetimes[target] = self.rebirth()
+        s_ind = self._index(src)
+        t_ind = self._index(trg)
+        self.charge[src], self.charge[trg] = 0, 1
+        self.state[s_ind], self.state[t_ind] = trg, src
+        self.lifetimes[trg] = self.rebirth()
 
-        # reset all cohopping times involving ind
+        # reset all cohopping times involving src
         if self.enable_cohop:
             self._ch_rebirth(src)
 

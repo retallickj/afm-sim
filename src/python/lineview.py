@@ -23,7 +23,7 @@ class Viewer:
 
     LW = 2
 
-    wellfunc = lambda self, x: .32-.8*np.exp(-.5*np.abs(x)**3)
+    wellfunc = lambda self, x: .32-.6*np.exp(-.5*np.abs(x)**3)
 
 
     def __init__(self, start_file):
