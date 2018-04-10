@@ -308,6 +308,7 @@ class HoppingAnimator(QGraphicsView):
 
         self.bulk = self.model.getChannel('bulk')
         self.tip = self.model.getChannel('tip')
+        self.clock = self.model.getChannel('clock')
 
         self._initGUI()
 
@@ -422,7 +423,7 @@ class HoppingAnimator(QGraphicsView):
                 'Self-Trapping energy for surface-bulk hopping')
 
             val, func = self.bulk.mu, lambda v: self.setPar(self.bulk, 'mu', v)
-            dock.addSlider('mu', -.3, .3, .01, val, func,
+            dock.addSlider('mu', 0., .5, .01, val, func,
                 'Chemical Potential: local potential at which charges will hop \
                 between the bulk and the surface')
 
@@ -479,6 +480,29 @@ class HoppingAnimator(QGraphicsView):
             val, func = self.tip.rate, lambda v: self.setPar(self.tip, 'rate', v)
             dock.addSlider('rate', 1., 50., .5, val, func,
                 'Tip scan rate in nm/s')
+
+        if self.clock is not None:
+
+            dock.addSeparator()
+            dock.addText('Clocking Field')
+
+            val = np.log10(self.clock.wf_l)
+            func = lambda v: self.setPar(self.clock, 'wf_l', 10**v)
+            dock.addSlider('Length', 0, 4, .2, val, func,
+                'Wavelength, in angstroms')
+
+            val = np.log10(self.clock.wf_f)
+            func = lambda v: self.setPar(self.clock, 'wf_f', 10**v)
+            dock.addSlider('Frequency', -2, 3, .1, val, func,
+                'Frequency, in Hz')
+
+            val, func = self.clock.wf_A, lambda v: self.setPar(self.clock, 'wf_A', v)
+            dock.addSlider('Amplitude', 0, .5, .01, val, func,
+                'Amplitude, in eV')
+
+            val, func = self.clock.wf_0, lambda v: self.setPar(self.clock, 'wf_0', v)
+            dock.addSlider('Offset', -.2, .2, .01, val, func,
+                'Offset, in eV')
 
         # animator controls
         if True:
@@ -677,13 +701,14 @@ class HoppingAnimator(QGraphicsView):
                 self.log()
 
             # update hopper state
-            milli = 1.
+            mcount = 30
+            milli = mcount
             while milli>0:
                 dt = self.model.step()
                 millis = dt*1000./self.rate
                 milli -= millis
 
-            self.tick_timer.start(min(max(int(millis),1), 10000))
+            self.tick_timer.start(min(max(int(millis),mcount), 10000))
 
     def log(self):
         ''' '''
@@ -914,7 +939,7 @@ if __name__ == '__main__':
         for n in range(N):
             x0 = 10*n
             qca += [(x0,0,1), (x0+3,0,1), (x0,2,0), (x0+3,2,0)]
-        qca.append((-4,0,1))
+        #qca.append((-4,0,1))
         return qca
 
     def wire(N):
@@ -926,14 +951,15 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = line
+    device = QCA(4)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
-    model = HoppingModel(device, model='VRH')
+    model = HoppingModel(device, model='marcus')
     model.addChannel('bulk')
-    model.addChannel('tip')
+    model.addChannel('clock')
+    #model.addChannel('tip')
     #model.fixElectronCount(3)
 
     app = QApplication(sys.argv)

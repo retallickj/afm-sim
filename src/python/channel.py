@@ -28,6 +28,8 @@ class Channel(object):
     active = False      # set True if the channel induces a bias that is state
                         # dependent
 
+    sdflag = True       # set True if the channel is a charge source/drain
+
     # useful lambdas
     rebirth = np.random.exponential # reset for hop-on lifetime
 
@@ -39,7 +41,7 @@ class Channel(object):
         '''Set up channel for the given DB positions and thermal energy'''
         self.kt = kt
         self.X, self.Y = X, Y
-        self.lifetime = self.rebirth()
+        self.lifetime = self.rebirth() if self.sdflag else np.inf
         self.tickrate = 1.
 
     def tick(self):
@@ -48,11 +50,15 @@ class Channel(object):
 
     def peek(self):
         '''Time until next charge hops onto the surface'''
-        return self.lifetime/(self.tickrate+self.MTR)
+        if self.sdflag:
+            return self.lifetime/(self.tickrate+self.MTR)
+        else:
+            return np.inf
 
     def run(self, dt):
         '''Advance the channel lifetime by the given amount'''
-        self.lifetime -= dt*self.tickrate
+        if self.sdflag:
+            self.lifetime -= dt*self.tickrate
 
     def pop(self):
         '''Pop a charge off the channel. The HoppingModel should update its
@@ -71,6 +77,15 @@ class Channel(object):
         '''Get the induced local potentials for each DB as a result of the
         presence of the channel for the given occupation state'''
         return np.zeros(len(self.X))
+
+    def computeDelta(self, n, m):
+        '''Compute the energy delta for a single hop between an occupied db, n,
+        and an unoccupied db, m.'''
+        if not self.active:
+            return 0
+        occ = self.occ.tolist()
+        occ[occ.index(n)]=m
+        return self.biases(self.occ)[n]-self.biases(nocc)[m]
 
     def computeDeltas(self):
         '''Compute the matrix of energy deltas for single hopping events'''

@@ -42,6 +42,10 @@ class BaseModel(object):
         self.R = np.sqrt(dX**2+dY**2)
         self._spatial_rates()
 
+    def rate(self, dg, n, m):
+        '''Compute the hopping rate from the energy delta, source, and target'''
+        raise NotImplementedError()
+
     def rates(self, dG, occ, nocc):
         '''Compute the hopping rates from the energy deltas
 
@@ -90,7 +94,7 @@ class VRHModel(BaseModel):
     # model-specific parameters
     prefact = 1.e11     # scaling prefactor for rates
 
-    lamb    = 0.01      # self-trapping energy, eV
+    lamb    = 0.03      # self-trapping energy, eV
     expmax  = 1e2       # maximum argument for exp(x)
 
     def __init__(self):
@@ -98,6 +102,10 @@ class VRHModel(BaseModel):
 
     def setup(self, X, Y, kt):
         super(VRHModel, self).setup(X, Y, kt)
+
+    def rate(self, dg, n, m):
+        arg = -self.beta*(dg+self.lamb)/self.ktf
+        return self.T0[n,m]*self._exp(arg)
 
     def rates(self, dG, occ, nocc):
         arg = -self.beta*(dG+self.lamb)/self.ktf
@@ -137,10 +145,15 @@ class MarcusModel(BaseModel):
         self.lbeta = np.inf if lamb == 0 else self.beta/lamb/self.ktf
         self.Tp = self.T0*np.sqrt(self.lbeta*np.pi)/self.hbar
 
+    def rate(self, dg, n, m):
+        return self.Tp[n,m]*np.exp(-.25*self.lbeta*(dg+self.lamb)**2)
+
     def rates(self, dG, occ, nocc):
         return self.Tp[occ,:][:,nocc]*np.exp(-.25*self.lbeta*(dG+self.lamb)**2)
 
-    def cohopping_rate(self, dG, i, j, k, l):
+    def cohopping_rate(self, dG, ij, kl):
+        i,j = ij
+        k,l = kl
         return self.cohop_tint(i,j,k,l)*np.exp(-.25*self.lbeta*(dG+self.cohop_lamb)**2)
 
 
