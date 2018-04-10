@@ -896,6 +896,19 @@ class MainWindow(QMainWindow):
             self.ltime.setText('Lifetime: {0:.3f}'.format(
                                     self.model.lifetimes[self.dbn]))
 
+    def debug(self):
+
+        from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
+        import pdb, sys
+        pyqtRemoveInputHook()
+        try:
+            dbg = pdb.Pdb()
+            dbg.reset()
+            dbg.do_next(None)
+            dbg.interaction(sys._getframe().f_back, None)
+        finally:
+            pyqtRestoreInputHook()
+
 
     def keyPressEvent(self, e):
 
@@ -914,6 +927,8 @@ class MainWindow(QMainWindow):
         elif e.key() == Qt.Key_Minus:
             zfact = 1-self.ZOOM
             self.animator.scale(zfact, zfact)
+        elif e.key() == Qt.Key_D:
+            self.debug()
         elif e.key() == Qt.Key_S:
             fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss.png')
             fname = os.path.join('.', fname)
