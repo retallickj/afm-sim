@@ -124,7 +124,7 @@ class Bulk(Channel):
 
     # prefactors
     nu = 1e3    # maximum rate of hops between bulk and surface
-    mu = .15     # local energy at which electrons start to hop
+    mu = .25     # local energy at which electrons start to hop
     lamb = 0.   # self-trapping energy
 
     alpha   = 1.e0  # damping factor for kt, higher means sharper transition

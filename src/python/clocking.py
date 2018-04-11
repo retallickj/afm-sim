@@ -18,7 +18,7 @@ class Clock(Channel):
     ''' '''
 
     name = 'clock'
-    scale = 0.0
+    scale = 1.0
 
     active = False  # clocking fields are surface independent
     sdflag = False  # no hopping to/from clocking electrodes

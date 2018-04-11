@@ -95,7 +95,7 @@ class Thread(QThread):
 class DB(QGraphicsEllipseItem):
 
     pen     = QPen(QColor("white"), .2*_SF)     # DB edge pen
-    bgpen   = QPen(Qt.darkGray, .1*_SF, Qt.DotLine)
+    bgpen   = QPen(QColor(255,255,255,50), .1*_SF, Qt.DotLine)
 
     pfill   = QBrush(QColor("orange"))     # charged DB for fixed perturbers
     fill    = QBrush(Qt.green)      # charged DB fill color
@@ -953,8 +953,8 @@ if __name__ == '__main__':
     pair = lambda n: [0, n]
 
     _or = [(0,0,0),(2,1,0),(6,1,0),(8,0,0),(4,3,0),(4,4,1)]
-    _or.append((4,6,0))
-    _or.append((-2,-1,0))
+    # _or.append((4,6,1))
+    # _or.append((-2,-1,0))
     # _or.append((10,-1,0))
 
     def QCA(N):
@@ -974,7 +974,7 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = QCA(4)
+    device = _or
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'

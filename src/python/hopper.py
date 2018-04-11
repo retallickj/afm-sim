@@ -61,7 +61,7 @@ class HoppingModel:
     free_rho = 0.5       # filling density if not fixed_pop (Nel = round(N*free_rho))
     burn_count = 0      # number of burns hops per db
 
-    enable_cohop = False     # enable cohopping
+    enable_cohop = True     # enable cohopping
     enable_FRH = True       # enable finite range hopping
 
     hop_range = 20      # maximum range for hopping, angstroms
@@ -277,7 +277,7 @@ class HoppingModel:
                 self.tickrates[i] = sum(self.trates[src].values())
 
         if self.channels and not self.fixed_pop:
-            self.crates = np.array([channel.rates() for channel in self.channels]).T
+            self.crates = np.array([ch.rates() for ch in self.channels]).T
             self.tickrates += np.sum(self.crates, axis=1)
 
         # cohopping
@@ -359,7 +359,7 @@ class HoppingModel:
             tick    : time advancement
         '''
 
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
 
         # figure out the time step
         dt_hop, T, ind = self.peek()   # hopping events
@@ -481,7 +481,7 @@ class HoppingModel:
         # could be made more concise with a static function map
         if T == 'hop':
             self._hop(ind)
-        elif T == 'chop'
+        elif T == 'chop':
             self._cohop(ind)
         elif T == 'chan':
             self._channel_pop(ind)
@@ -578,6 +578,8 @@ class HoppingModel:
 
 
     def _compute_cohop_dG(self, i, j, k, l):
+        print(i,j,k,l)
+        print(self.dG)
         return self.dG[i][k]+self.dG[j][l] \
             + (self.V[k,l]+self.V[i,j]) \
             - (self.V[i,l]+self.V[j,k])
