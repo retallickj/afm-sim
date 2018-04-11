@@ -16,8 +16,8 @@ from itertools import product
 import json
 from subprocess import Popen
 
-from PyQt5.QtCore import (Qt, QTimer, QThread, pyqtSignal, QDateTime)
-from PyQt5.QtGui import (QPen, QBrush, QColor, QPainter, QImage)
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 from hopper import HoppingModel
@@ -79,6 +79,48 @@ class Logger(object):
                     stdout=self.view_fp, stderr=self.view_fp)
 
 
+class ClockGradient(QLinearGradient):
+
+    cmap = [ QColor(0,0,50,255),    # minimum clocking field
+             QColor(29, 35, 56),    # mid value
+             QColor(50,0,0,255)     # maximum clocking field
+            ]
+
+    def __init__(self, clock, rect):
+        '''Initialise the clocking gradient display.
+
+        inputs:
+            clock   : object with clock.wf_l and clock.waveform(x)
+            rect    : bounding rect of object to display gradient in
+        '''
+        super(ClockGradient, self).__init__()
+
+        self.clock = clock
+        self.setSpread(QGradient.ReflectSpread)
+
+        self.setStart(rect.left(),0)
+        self.setFinalStop(rect.right(),0)
+
+        self.setColorAt(0, self.cmap[0])
+        self.setColorAt(.5, self.cmap[1])
+        self.setColorAt(1., self.cmap[2])
+
+    def updateColors(self):
+        '''Track the clock by adjusting the stop coordinates'''
+
+        # for now, assume waveform extrema at +- wlength/4 at t=0
+        xx = self.clock.wf_l*np.array([-.25, .25])
+        mn, mx = self.clock.waveform(xx, 0)
+
+        interp = lambda v: self.interpolate((v-mn)/(mx-mn))
+
+        # advance minimum position by current time
+        xx += self.clock.wf_l*self.clock.wf_f*self.clock.t
+        if xx[0] > self.clock.wf_l:
+            xx -= self.clock.wf_l
+
+        self.setStart(xx[0]*_SF, 0)
+        self.setFinalStop(xx[1]*_SF, 0)
 
 
 class Thread(QThread):
@@ -298,6 +340,8 @@ class HoppingAnimator(QGraphicsView):
 
     bgcol = QColor(29, 35, 56)  # background color
     record_dir = './.temp_rec/'
+
+    logging = False     # set True for LineView animation
     log_dir = './.temp/'
 
     signal_tick = pyqtSignal()
@@ -349,8 +393,8 @@ class HoppingAnimator(QGraphicsView):
         self.paused = False
         self.rtimes = [0,]*len(self.timers)
 
-        self.logging = True
-        self.logger = Logger(self.log_dir)
+
+        self.logger = Logger(self.log_dir) if self.logging else None
 
         self.panning = False
         self.panx, self.pany = 0., 0.
@@ -360,7 +404,8 @@ class HoppingAnimator(QGraphicsView):
 
     def __del__(self):
         #super(HoppingAnimator, self).__del__()
-        del(self.logger)
+        if self.logger:
+            del self.logger
 
     def _initGUI(self):
         '''Initialise the animator window'''
@@ -376,7 +421,12 @@ class HoppingAnimator(QGraphicsView):
             self.tip_item = Tip()
             self.scene.addItem(self.tip_item)
 
-        self.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
+        if self.clock is not None:
+            self.gradient = ClockGradient(
+                    self.clock, self.scene.sceneRect())
+            self.scene.setBackgroundBrush(self.gradient)
+        else:
+            self.scene.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
         self.setWindowTitle('Hopping Animator')
 
         # Set Anchors
@@ -494,10 +544,10 @@ class HoppingAnimator(QGraphicsView):
             dock.addSeparator()
             dock.addText('Clocking Field')
 
-            val = np.log10(self.clock.wf_l)
-            func = lambda v: self.setPar(self.clock, 'wf_l', 10**v)
-            dock.addSlider('Length', 0, 4, .2, val, func,
-                'Wavelength, in angstroms')
+            val = np.log10(self.clock.wf_l)-1
+            func = lambda v: self.setPar(self.clock, 'wf_l', 10**(v+1))
+            dock.addSlider('Length', 0, 3, .1, val, func,
+                'Wavelength, in nm')
 
             val = np.log10(self.clock.wf_f)
             func = lambda v: self.setPar(self.clock, 'wf_f', 10**v)
@@ -700,6 +750,10 @@ class HoppingAnimator(QGraphicsView):
 
             if self.tip is not None:
                 self.updateTip()
+
+            if self.clock is not None:
+                self.gradient.updateColors()
+                self.scene.setBackgroundBrush(self.gradient)
 
             self.update()
             self.signal_tick.emit()
@@ -910,7 +964,8 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, e):
 
         if e.key() == Qt.Key_Q:
-            self.animator.logger.close()
+            if self.animator.logging:
+                self.animator.logger.close()
             if self.record:
                 self.animator.compile()
             self.close()
@@ -944,8 +999,8 @@ if __name__ == '__main__':
     import sys
 
     line = [8, 10, 15, 17]
-    line.insert(0, line[0]-7)
-    line.append(line[-1]+7)
+    #line.insert(0, line[0]-7)
+    #line.append(line[-1]+7)
 
     pair = lambda n: [0, n]
 
@@ -971,7 +1026,7 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = _or
+    device = QCA(40)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'

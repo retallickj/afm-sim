@@ -24,10 +24,13 @@ class Clock(Channel):
     sdflag = False  # no hopping to/from clocking electrodes
 
     # default waveform parameters
-    wf_l    = 2e2       # waveform wavelength, angstroms
-    wf_f    = 1e-1       # waveform frequency, Hz
+    wf_l    = 2e3       # waveform wavelength, angstroms
+    wf_f    = 1e-1      # waveform frequency, Hz
     wf_A    = .1        # waveform ampitude, eV
     wf_0    = 0.        # waveform offset, eV
+
+    # time stepping
+    dp = 1e-2           # fraction of clocking period between samples
 
     def __init__(self, fname=None):
         '''Initialise clock'''
@@ -46,7 +49,7 @@ class Clock(Channel):
 
     def tick(self):
         ''' '''
-        return 1e-2/self.wf_f
+        return self.dp/self.wf_f
 
     def run(self, dt):
         '''Advance the clocking fields by the given amount'''
@@ -69,11 +72,11 @@ class Clock(Channel):
         '''Precompute generator for time dependent fields'''
 
         if self.fname is None:
-            return lambda t: self.waveform(t)
+            return lambda t: self.waveform(self.X, t)
 
         raise NotImplementedError('External field generation not implemented')
 
-    def waveform(self, t):
+    def waveform(self, x, t):
         '''Travelling wave approximation of clocking fields'''
-        phase = 2*np.pi*(self.X/self.wf_l - self.wf_f*t)
+        phase = 2*np.pi*(x/self.wf_l - self.wf_f*t)
         return self.wf_0 + self.wf_A*np.sin(phase)
