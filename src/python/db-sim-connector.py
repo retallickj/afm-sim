@@ -128,6 +128,10 @@ class DBSimConnector:
         model = HoppingModel(self.dbs, self.simparams['hopping_model'])
         model.fixElectronCount(int(self.simparams['num_electrons']))
 
+        # TODO make configurable
+        model.addChannel('bulk')
+        model.addChannel('clock')
+
         app = QApplication(sys.argv)
         mw = MainWindow(model)
 
