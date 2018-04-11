@@ -24,9 +24,9 @@ class Clock(Channel):
     sdflag = False  # no hopping to/from clocking electrodes
 
     # default waveform parameters
-    wf_l    = 1e2       # waveform wavelength, angstroms
+    wf_l    = 2e2       # waveform wavelength, angstroms
     wf_f    = 1e-1       # waveform frequency, Hz
-    wf_A    = .2        # waveform ampitude, eV
+    wf_A    = .1        # waveform ampitude, eV
     wf_0    = 0.        # waveform offset, eV
 
     def __init__(self, fname=None):
