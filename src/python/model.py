@@ -8,7 +8,7 @@ Collection of different hopping models for calculating hopping rates
 __author__      = 'Jake Retallick'
 __copyright__   = 'MIT License'
 __version__     = '1.2'
-__date__        = '2018-02-14'  # last update
+__date__        = '2018-04-05'  # last update
 
 import numpy as np
 
@@ -19,6 +19,11 @@ class BaseModel(object):
 
     # shared physical constants
     hbar    = 6.582e-16     # eV.s
+
+    alph    = 10.   # inverse attenuation length, 1/angstroms
+    prefact = 1e-3  # scaling prefactor for rates
+    ktf     = 1.    # thermal broadening factor
+    lamb    = 0.04  # reorganization energy, eV
 
     def __init__(self):
         '''Initialise a hopping rate model'''
@@ -32,6 +37,13 @@ class BaseModel(object):
             Y  : matrix of y positions, angstroms
             kt : thermal energy of surface, eV
         '''
+        self.beta = 1./kt
+        dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
+        self.R = np.sqrt(dX**2+dY**2)
+        self._spatial_rates()
+
+    def rate(self, dg, n, m):
+        '''Compute the hopping rate from the energy delta, source, and target'''
         raise NotImplementedError()
 
     def rates(self, dG, occ, nocc):
@@ -56,32 +68,54 @@ class BaseModel(object):
         '''
         raise NotImplementedError()
 
+    def setAttenuation(self, alph):
+        self.alph = alph
+        self._spatial_rates()
+
+    def setPrefactor(self, fact):
+        self.prefact = fact
+        self._spatial_rates()
+
+    def setLambda(self, lamb):
+        self.lamb = lamb
+
+    # internal methods
+
+    def _spatial_rates(self):
+        '''compute the spatial decay prefactors'''
+        self.T0 = self.prefact*np.exp(-2*self.R/self.alph)
+
+
 # derived models
 
 class VRHModel(BaseModel):
     '''Variable-Range Hopping model for hopping rates'''
 
     # model-specific parameters
-    alph    = 1e-2     # inverse attenuation length, 1/angstroms
-    r0      = 1.e11   # scaling prefactor for rates
-    lamb    = 0.01      # self-trapping energy, eV
+    prefact = 1.e11     # scaling prefactor for rates
+
+    lamb    = 0.03      # self-trapping energy, eV
+    expmax  = 1e2       # maximum argument for exp(x)
 
     def __init__(self):
         super(VRHModel, self).__init__()
 
     def setup(self, X, Y, kt):
-        self.beta = 1./kt
-        dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
-        R = np.sqrt(dX**2+dY**2)
-        self.T0 = self.r0*np.exp(-2*self.alph*R)
+        super(VRHModel, self).setup(X, Y, kt)
 
-    # TODO: problem with exp overflow here, decreases in energy beyond lamb
-    #       cause essentially instantaneous hops
+    def rate(self, dg, n, m):
+        arg = -self.beta*(dg+self.lamb)/self.ktf
+        return self.T0[n,m]*self._exp(arg)
+
     def rates(self, dG, occ, nocc):
-        return self.T0[occ,:][:,nocc]*np.exp(-self.beta*(dG+self.lamb))
+        arg = -self.beta*(dG+self.lamb)/self.ktf
+        return self.T0[occ,:][:,nocc]*self._exp(arg)
 
-    def cohopping_rate(self, dG, i, j, k, l):
-        pass
+    def _exp(self, arg):
+        '''Thresholded version of exp'''
+        mask = arg <= self.expmax
+        arg = arg*mask + self.expmax*(1-mask)
+        return np.exp(arg)
 
 
 class MarcusModel(BaseModel):
@@ -91,13 +125,11 @@ class MarcusModel(BaseModel):
     lamb    = 0.04      # reorganization energy, eV
 
     # transfer integral parameters
-    t0      = 1e-3      # prefactor
-    alph    = 1e-2      # inverse attenuation length, 1/angstroms
+    prefact = 1e-3      # prefactor
 
     # cohopping parameters
     cohop_lamb = lamb   # cohopping reorganization energy, eV
     cohop_alph = 1e-2   # cohopping inverse attenuation length, 1/angstroms
-
 
     def __init__(self):
         super(MarcusModel, self).__init__()
@@ -105,15 +137,23 @@ class MarcusModel(BaseModel):
     # inherited methods
 
     def setup(self, X, Y, kt):
-        self.lbeta = 1./(self.lamb*kt)
-        dX, dY = X-X.reshape(-1,1), Y-Y.reshape(-1,1)
-        self.R = np.sqrt(dX**2+dY**2)
-        self.Tp = np.abs(self.tint(self.R))**2*np.sqrt(self.lbeta*np.pi)/self.hbar
+        super(MarcusModel, self).setup(X, Y, kt)
+        self.setLambda(self.lamb)
+
+    def setLambda(self, lamb):
+        self.lamb = lamb
+        self.lbeta = np.inf if lamb == 0 else self.beta/lamb/self.ktf
+        self.Tp = self.T0*np.sqrt(self.lbeta*np.pi)/self.hbar
+
+    def rate(self, dg, n, m):
+        return self.Tp[n,m]*np.exp(-.25*self.lbeta*(dg+self.lamb)**2)
 
     def rates(self, dG, occ, nocc):
         return self.Tp[occ,:][:,nocc]*np.exp(-.25*self.lbeta*(dG+self.lamb)**2)
 
-    def cohopping_rate(self, dG, i, j, k, l):
+    def cohopping_rate(self, dG, ij, kl):
+        i,j = ij
+        k,l = kl
         return self.cohop_tint(i,j,k,l)*np.exp(-.25*self.lbeta*(dG+self.cohop_lamb)**2)
 
 
@@ -121,10 +161,6 @@ class MarcusModel(BaseModel):
 
     def cohop_tint(self, i,j,k,l):
         return np.sqrt(self.Tp[i,k]*self.Tp[j,l]+self.Tp[i,l]*self.Tp[j,k])*np.exp(-self.cohop_alph*self.R[i,j])
-
-    def tint(self, R):
-        tij = self.t0*np.exp(-self.alph*R)
-        return tij
 
 models = {  'marcus':   MarcusModel,
             'VRH':      VRHModel }
