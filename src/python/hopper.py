@@ -28,8 +28,6 @@ from collections import defaultdict
 from time import clock as tick
 import sys
 
-from pprint import pprint
-
 # add non-standard channels
 Channels['tip'] = TipModel
 Channels['clock'] = Clock
@@ -39,6 +37,7 @@ class HoppingModel:
 
     # machine precision
     MTR     = 1e-16         # for tickrates division
+    verbose = False
 
     # energy parameters
     debye   = 50.           # debye screening length, angstroms
@@ -114,7 +113,7 @@ class HoppingModel:
         # by default, use
         self.Nel = int(round(self.N*self.free_rho))
 
-        self.vprint = print
+        self.vprint = print if self.verbose else lambda *a,**k: None
 
         # create model, setup on initialisation
         if model not in Models:
@@ -128,7 +127,7 @@ class HoppingModel:
         '''Fix the number of electrons in the system. Use n<0 to re-enable
         automatic population mechanism.'''
 
-        print('setting electron count to {0}'.format(n))
+        self.vprint('setting electron count to {0}'.format(n))
         if n<0:
             self.Nel = int(round(self.N*self.free_rho))
             self.fixed_pop = False
@@ -423,6 +422,17 @@ class HoppingModel:
         self.bias -= V if pos else -V
         self.update()
 
+    def getLevels(self, src):
+        '''Get the effective relative level shifts for the occupied src DB to
+        possible targets'''
+
+        if src not in self.dG:
+            return {}
+
+        beff = self.beff[src]
+        return {trg: beff - dg for trg, dg in self.dG[src].items()}
+
+
 
     # internal methods
 
@@ -476,7 +486,7 @@ class HoppingModel:
     def _hop_handler(self, T, ind):
         '''Handle all the possible hopping cases.'''
 
-        print('Hopping type: {0} :: {1}'.format(T, ind))
+        self.vprint('Hopping type: {0} :: {1}'.format(T, ind))
 
         # could be made more concise with a static function map
         if T == 'hop':
@@ -496,8 +506,6 @@ class HoppingModel:
         targets, P = zip(*self.ch_trates[ij].items())
         ind = np.random.choice(range(len(targets)), p=np.array(P)/sum(P))
         (i,j), (k,l) = ij, targets[ind]
-
-        print(targets, P, i,j,k,l)
 
         # modify charge state
         self._surface_hop(i,k)
@@ -519,7 +527,7 @@ class HoppingModel:
             targets.append(-1)
         trg = np.random.choice(targets,p=P/P.sum())
 
-        print('Hopping db from src {0} to trg {1}'.format(src, trg))
+        self.vprint('Hopping db from src {0} to trg {1}'.format(src, trg))
 
         # modify the charge state
         if trg < 0:

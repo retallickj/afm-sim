@@ -745,11 +745,8 @@ class HoppingAnimator(QGraphicsView):
         # tracker information
         out['dbn'] = self.dbn
         if self.dbn != -1 and self.model.charge[self.dbn]:
-            ind, = np.where(self.model.state==self.dbn)
-            tbias = np.zeros(self.model.N, dtype=float)
-            nocc = self.model.state[self.model.Nel:]
-            tbias[nocc] = self.model.beff[self.dbn] - self.model.dG[ind,:].reshape(-1,)
-            out['tbias'] = tbias.tolist()
+            tbias = self.model.getLevels(self.dbn)
+            out['tbias'] =  {str(k):v for k,v in tbias.items()}
 
         self.logger.log(out)
 

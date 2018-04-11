@@ -72,9 +72,9 @@ class Viewer:
             db = self.handles['db'][n]
             db['well'].set_data(self.dbx+x, self.dby-b-mu)
             db['lvl'].set_data(self.dbx+x, -b-mu)
-            if tflag and c==0:
+            if tflag and c==0 and str(n) in data['tbias']:
                 db['tlvl'].set_visible(True)
-                db['tlvl'].set_data(self.dbx+x, -data['tbias'][n]-mu)
+                db['tlvl'].set_data(self.dbx+x, -data['tbias'][str(n)]-mu)
             else:
                 db['tlvl'].set_visible(False)
             db['dot'].center = (x, -b-(mu+lamb))
