@@ -578,8 +578,10 @@ class HoppingModel:
 
 
     def _compute_cohop_dG(self, i, j, k, l):
-        print(i,j,k,l)
-        print(self.dG)
+
+        if k not in self.dG[i] or l not in self.dG[j]:
+            k,l = l,k
+
         return self.dG[i][k]+self.dG[j][l] \
             + (self.V[k,l]+self.V[i,j]) \
             - (self.V[i,l]+self.V[j,k])
