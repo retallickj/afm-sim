@@ -43,7 +43,7 @@ namespace phys{
     };
 
     // aggregate
-    class Aggregate 
+    class Aggregate
     {
     public:
       std::vector<std::shared_ptr<Aggregate>> aggs;
@@ -67,7 +67,7 @@ namespace phys{
       float x,y; // physical location in angstroms
       float z;
     };
-    
+
     // afm path
     struct AFMPath {
       std::vector<std::shared_ptr<AFMNode>> nodes;
@@ -114,6 +114,7 @@ namespace phys{
     // Accessors
     bool parameterExists(const std::string &key) {return sim_params.find(key) != sim_params.end();}
     std::string getParameter(const std::string &key) {return sim_params.find(key) != sim_params.end() ? sim_params.at(key) : "";}
+    void insertParameter(const std::string &key, const std::string &val) {sim_params.insert(std::map<std::string, std::string>::value_type(key, val));}
     std::vector<std::string> getParameterKeys() const;
 
     int afmPathCount() const {return afm_paths.size();}

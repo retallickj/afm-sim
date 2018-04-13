@@ -71,6 +71,24 @@
      </item>
     </layout>
    </item>
+   <item>
+    <layout class="QHBoxLayout" name="include_electrodes_hl">
+     <item>
+      <widget class="QLabel" name="label_include_electrodes">
+       <property name="text">
+        <string>Include electrodes (0 or 1)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_include_electrodes">
+       <property name="text">
+        <string>0</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
   </layout>
  </widget>
  <resources/>

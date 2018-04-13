@@ -27,6 +27,7 @@ AFMMarcus::AFMMarcus(const std::string &in_path, const std::string &out_path, co
 bool AFMMarcus::runSim()
 {
   std::cout << std::endl << "*** AFMMarcus: Entered simulation ***" << std::endl;
+
   // check if script exists at script_path
   // TODO
 
@@ -48,6 +49,26 @@ bool AFMMarcus::runSim()
   boost::filesystem::create_directories(tmp_dir);
   script_problem_path = tmp_dir + "/afmmarcus_problem.xml";
   script_result_path = tmp_dir + "/afmmarcus_result.xml";
+
+
+  // call PoisSolver if needed
+  // TODO change this to be more generic, this is pretty hacky
+  std::string pois_result_path;
+  if (problem->parameterExists("include_electrodes") &&
+      !problam->getParameter("include_electrodes").compare("1")) {
+    // set up call parameters
+    std::string pois_bin_path = problem->getParameter("pois_bin_path");
+    pois_result_path = tmp_dir + "/pois_result.xml";
+    std::string command = pois_bin_path + " " + in_path() + " " +
+        pois_result_path + " --clock";
+
+    // call the binary
+    system(command.c_str());
+
+    // save the result as a simulation parameter for AFM Marcus to read
+    insertParameter("pois_result_path", pois_result_path);
+  }
+
 
   // detect script extension, assume Windows if it is *.exe
   bool windows_mode = false;

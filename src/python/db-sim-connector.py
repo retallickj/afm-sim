@@ -121,6 +121,11 @@ class DBSimConnector:
     def runAnimation(self):
         import sys
 
+        # call Poisson solver if include_electrodes parameter is true
+        if (self.simparams['include_electrodes'] == '1'):
+            # TODO read results from self.simparams['pois_result_path']
+
+
         # default to marcus model if no model parameter exists
         if ('hopping_model' not in self.simparams):
             self.simparams['hopping_model'] = 'marcus'

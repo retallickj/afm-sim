@@ -11,5 +11,6 @@
         <param gui_object_type="QLineEdit" gui_object_name="le_simulation_type">simulation_type</param>
         <param gui_object_type="QLineEdit" gui_object_name="le_hopping_model">hopping_model</param>
         <param gui_object_type="QLineEdit" gui_object_name="le_num_electrons">num_electrons</param>
+        <param gui_object_type="QLineEdit" gui_object_name="le_include_electrodes">include_electrodes</param>
     </sim_params>
 </physeng>
