@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>460</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QHBoxLayout" name="simulation_type_hl">
+     <item>
+      <widget class="QLabel" name="label_simulation_type">
+       <property name="text">
+        <string>Simulation Type</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_simulation_type">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>animation</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="hopping_model_hl">
+     <item>
+      <widget class="QLabel" name="label_hopping_model">
+       <property name="text">
+        <string>Hopping Model</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_hopping_model">
+       <property name="text">
+        <string>marcus</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="num_electrons_hl">
+     <item>
+      <widget class="QLabel" name="label_num_electrons">
+       <property name="text">
+        <string>Number of electrons</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_num_electrons">
+       <property name="text">
+        <string>-1</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="include_electrodes_hl">
+     <item>
+      <widget class="QLabel" name="label_include_electrodes">
+       <property name="text">
+        <string>Include electrodes (0 or 1)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_include_electrodes">
+       <property name="text">
+        <string>0</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="pois_bin_path_hl">
+     <item>
+      <widget class="QLabel" name="label_pois_bin_path">
+       <property name="text">
+        <string>PoisSolver binary path</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_pois_bin_path">
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="bcs_hl">
+     <item>
+      <widget class="QLabel" name="label_bcs">
+       <property name="text">
+        <string>Boundary Conditions:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="combo_bcs">
+       <item>
+        <property name="text">
+         <string>Dirichlet</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Neumann</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Periodic</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="resolution_hl">
+     <item>
+      <widget class="QLabel" name="label_resolution">
+       <property name="text">
+        <string>Resolution:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_resolution">
+       <property name="text">
+        <string>50</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="length_hl">
+     <item>
+      <widget class="QLabel" name="label_length">
+       <property name="text">
+        <string>Length:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_length">
+       <property name="text">
+        <string>1e-6</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="max_error_hl">
+     <item>
+      <widget class="QLabel" name="label_max_error">
+       <property name="text">
+        <string>Maximum Error:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_max_error">
+       <property name="text">
+        <string>5e-2</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

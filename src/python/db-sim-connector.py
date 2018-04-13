@@ -122,7 +122,7 @@ class DBSimConnector:
         import sys
 
         # call Poisson solver if include_electrodes parameter is true
-        if (self.simparams['include_electrodes'] == '1'):
+        #if (self.simparams['include_electrodes'] == '1'):
             # TODO read results from self.simparams['pois_result_path']
 
 

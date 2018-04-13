@@ -54,19 +54,26 @@ bool AFMMarcus::runSim()
   // call PoisSolver if needed
   // TODO change this to be more generic, this is pretty hacky
   std::string pois_result_path;
-  if (problem->parameterExists("include_electrodes") &&
-      !problam->getParameter("include_electrodes").compare("1")) {
+  if (problem.parameterExists("include_electrodes") &&
+      !problem.getParameter("include_electrodes").compare("1")) {
+    // check if the indicated poisson solver binary path exists
+    std::string pois_bin_path = problem.getParameter("pois_bin_path");
+    if (!boost::filesystem::exists(pois_bin_path)) {
+      std::cout << "The PoisSolver binary path " << pois_bin_path << " doesn't exist." << std::endl;
+      return false;
+    }
+
     // set up call parameters
-    std::string pois_bin_path = problem->getParameter("pois_bin_path");
     pois_result_path = tmp_dir + "/pois_result.xml";
-    std::string command = pois_bin_path + " " + in_path() + " " +
-        pois_result_path + " --clock";
+    std::string command = pois_bin_path + " " + inPath() + " " +
+        pois_result_path; //+ " --clock";
+    std::cout << "Calling PoisSolver: " << command << std::endl;
 
     // call the binary
     system(command.c_str());
 
     // save the result as a simulation parameter for AFM Marcus to read
-    insertParameter("pois_result_path", pois_result_path);
+    problem.insertParameter("pois_result_path", pois_result_path);
   }
 
 
