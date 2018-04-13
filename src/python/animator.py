@@ -22,6 +22,8 @@ from PyQt5.QtWidgets import *
 
 from hopper import HoppingModel
 
+from timeit import default_timer as wall
+
 
 _SF = 50     # scale factor
 
@@ -31,6 +33,8 @@ class Logger(object):
 
     _log_file = 'log.dat'
     _temp_file = '.temp_log'
+
+    # TODO: start the Viewer on a key press
 
     def __init__(self, root, view=True):
         ''' '''
@@ -45,12 +49,19 @@ class Logger(object):
 
         self.temp_fn = os.path.join(self.root, self._temp_file)
         self.view, self.viewing = view, False
+        self.P = None
 
-    def close(self):
-        '''Cleanup the log directory. Deletes the previous log file'''
+    def __del__(self):
 
         print('Logger being closed')
-        self.view_fp.close()
+
+        # close viewer log if open
+        if hasattr(self, 'view_fp'):
+            self.view_fp.close()
+
+        # close the Viewer process if open
+        if self.P is None:
+            self.P.terminate()
 
     def log(self, data):
         '''Log the given dictionary to the next file'''
@@ -58,12 +69,14 @@ class Logger(object):
         with open(self.temp_fn, 'w') as fp:
             json.dump(data, fp, indent=1)
 
+        # keep trying to remove file if it exists
         while True:
-            try:
-                os.remove(self.log_fn)
-                break
-            except:
-                pass
+            if os.path.exists(self.log_fn):
+                try:
+                    os.remove(self.log_fn)
+                    break
+                except:
+                    pass
 
         os.rename(self.temp_fn, self.log_fn)
 
@@ -75,52 +88,88 @@ class Logger(object):
         print('Starting Viewer')
         self.viewing = True
         self.view_fp = open(os.path.join(self.root, 'stdout'), 'a')
-        Popen(['python3', 'lineview.py', self.log_fn],
+        self.P = Popen(['python3', 'lineview.py', self.log_fn],
                     stdout=self.view_fp, stderr=self.view_fp)
 
 
 class ClockGradient(QLinearGradient):
 
-    cmap = [ QColor(0,0,50,255),    # minimum clocking field
-             QColor(29, 35, 56),    # mid value
-             QColor(50,0,0,255)     # maximum clocking field
+    cmap = [ QColor(0,0,255,0),    # minimum clocking field color shift
+             QColor(0,0,0,0),     # mid value color shift
+             QColor(255,0,0,0)     # maximum clocking field color shift
             ]
 
-    def __init__(self, clock, rect):
+    steps = 10
+    mixfact = .1
+
+    def __init__(self, clock, rect, bg):
         '''Initialise the clocking gradient display.
 
         inputs:
-            clock   : object with clock.wf_l and clock.waveform(x)
-            rect    : bounding rect of object to display gradient in
+            clock   : object with clock.length and clock.waveform(x)
+            rect    : bounding rect of object to display gradient
+            bg      : background QColor,
         '''
         super(ClockGradient, self).__init__()
 
         self.clock = clock
-        self.setSpread(QGradient.ReflectSpread)
+        self.setSpread(QGradient.RepeatSpread)
 
         self.setStart(rect.left(),0)
         self.setFinalStop(rect.right(),0)
 
-        self.setColorAt(0, self.cmap[0])
-        self.setColorAt(.5, self.cmap[1])
-        self.setColorAt(1., self.cmap[2])
+        self.colors = [self.mixColor(bg, c) for c in self.cmap]
+        self.prepareClock()
+
+
+    def prepareClock(self):
+        '''Set up the clocking waveform gradient stops'''
+
+        xx = np.linspace(0,1,self.steps)
+        yy = self.clock.waveform(xx*self.clock.length, 0)
+
+        mn, mx = np.min(yy), np.max(yy)
+        interp = lambda v: self._interpolate((v-mn)/(mx-mn))
+
+        for x,y in zip(xx,yy):
+            self.setColorAt(x, interp(y))
 
     def updateColors(self):
         '''Track the clock by adjusting the stop coordinates'''
 
         # for now, assume waveform extrema at +- wlength/4 at t=0
-        xx = self.clock.wf_l*np.array([-.25, .25])
-        mn, mx = self.clock.waveform(xx, 0)
-
-        interp = lambda v: self.interpolate((v-mn)/(mx-mn))
+        xx = self.clock.length*np.array([0,1])
 
         # advance minimum position by current time
-        xx += self.clock.wf_l*self.clock.wf_f*self.clock.t
-        if xx[0] > self.clock.wf_l:
-            xx -= self.clock.wf_l
+        xx += self.clock.length*self.clock.wf_f*self.clock.t
+        if xx[0] > self.clock.length:
+            xx -= self.clock.length
 
         self.setStart(xx[0]*_SF, 0)
         self.setFinalStop(xx[1]*_SF, 0)
+
+    def _interpolate(self,v):
+        '''Interpolate the gradient color for a value between 0 and 1'''
+
+        if v<.5:
+            c1,c2 = self.colors[0], self.colors[1]
+            f1,f2 = .5-v, v
+        else:
+            c1,c2 = self.colors[1], self.colors[2]
+            f1,f2 = 1-v, v-.5
+
+        c = 2*(f1*np.array(c1.getRgb())+f2*np.array(c2.getRgb()))
+        return QColor(*c)
+
+    @classmethod
+    def mixColor(cls,c1,c2):
+        '''RGBA mixing of two QColors'''
+
+        c = np.array(c1.getRgb()) + cls.mixfact*np.array(c2.getRgb())
+        np.clip(c, 0, 255)
+
+        return QColor(*c)
+
 
 
 class Thread(QThread):
@@ -137,7 +186,7 @@ class Thread(QThread):
 class DB(QGraphicsEllipseItem):
 
     pen     = QPen(QColor("white"), .2*_SF)     # DB edge pen
-    bgpen   = QPen(QColor(255,255,255,50), .1*_SF, Qt.DotLine)
+    bgpen   = QPen(QColor(255,255,255,50), .2*_SF, Qt.DotLine)
 
     pfill   = QBrush(QColor("orange"))     # charged DB for fixed perturbers
     fill    = QBrush(Qt.green)      # charged DB fill color
@@ -164,6 +213,35 @@ class DB(QGraphicsEllipseItem):
 
         self.setBrush(brush)
 
+
+class SnapTarget(QGraphicsEllipseItem):
+
+    pen     = QPen(Qt.NoPen)
+    fill    = QBrush(Qt.yellow)
+
+    D = .6*DB.D
+    dd = .5*(DB.D-D)
+    r0 = .2*_SF
+
+    def __init__(self, parent=None):
+        super(SnapTarget, self).__init__(0,0,self.D, self.D, parent=parent)
+
+        self.setZValue(2)
+        self.setPen(self.pen)
+        self.setBrush(self.fill)
+        self.hide()
+
+        self.target = None
+
+    def setTarget(self, target=None):
+        if target is None:
+            self.hide()
+        elif isinstance(target, DB):
+            self.setPos(_SF*target.xx + self.dd, _SF*target.yy + self.dd)
+            self.show()
+        else:
+            raise KeyError('Snap: Invalid target type...')
+        self.target = target
 
 
 class Tracker(QGraphicsEllipseItem):
@@ -321,11 +399,6 @@ class DockWidget(QDockWidget):
 
 
 
-
-
-
-
-
 class HoppingAnimator(QGraphicsView):
     ''' '''
 
@@ -393,7 +466,6 @@ class HoppingAnimator(QGraphicsView):
         self.paused = False
         self.rtimes = [0,]*len(self.timers)
 
-
         self.logger = Logger(self.log_dir) if self.logging else None
 
         self.panning = False
@@ -412,10 +484,15 @@ class HoppingAnimator(QGraphicsView):
 
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
+        self.setMouseTracking(True)
 
         self._drawDBs()
         self.tracker = Tracker()
+        self.snapper = SnapTarget()
         self.scene.addItem(self.tracker)
+        self.scene.addItem(self.snapper)
+
+        self.old_pos = QPoint(0,0)
 
         if self.tip is not None:
             self.tip_item = Tip()
@@ -423,7 +500,7 @@ class HoppingAnimator(QGraphicsView):
 
         if self.clock is not None:
             self.gradient = ClockGradient(
-                    self.clock, self.scene.sceneRect())
+                    self.clock, self.scene.sceneRect(), self.bgcol)
             self.scene.setBackgroundBrush(self.gradient)
         else:
             self.scene.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
@@ -523,7 +600,7 @@ class HoppingAnimator(QGraphicsView):
             dock.addSlider('H', 100, 1000, 10, val, func,
                 'Tip height in pm')
 
-            val = self.tip.tipR1
+            val = self.tip.tipR1key
             func = lambda R: self.setParFunc(
                         lambda r: self.tip.setRadius(icibb=r), R)
             dock.addSlider('ICIBB R', 1, 50, 1, val, func,
@@ -544,9 +621,9 @@ class HoppingAnimator(QGraphicsView):
             dock.addSeparator()
             dock.addText('Clocking Field')
 
-            val = np.log10(self.clock.wf_l)-1
-            func = lambda v: self.setPar(self.clock, 'wf_l', 10**(v+1))
-            dock.addSlider('Length', 0, 3, .1, val, func,
+            val = np.log10(self.clock.length)-1
+            func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
+            dock.addSlider('log(length)', 0, 3, .1, val, func,
                 'Wavelength, in nm')
 
             val = np.log10(self.clock.wf_f)
@@ -664,10 +741,6 @@ class HoppingAnimator(QGraphicsView):
         self.path = []
         self.tick()
 
-
-
-
-
     def _drawDBs(self):
         '''Draw all the DBs for the animator'''
 
@@ -744,6 +817,9 @@ class HoppingAnimator(QGraphicsView):
         ''' '''
 
         if not self.paused:
+
+            print('\n\n Tick start:'); t = wall()
+
             # draw last state
             for i,c in enumerate(self.model.charge):
                 self.dbs[i].setCharge(c)
@@ -762,6 +838,8 @@ class HoppingAnimator(QGraphicsView):
             if self.logging:
                 self.log()
 
+            print('\tLogging: {0}'.format(wall()-t)); t = wall()
+
             # update hopper state
             mcount = 30
             milli = mcount
@@ -769,6 +847,8 @@ class HoppingAnimator(QGraphicsView):
                 dt = self.model.step()
                 millis = dt*1000./self.rate
                 milli -= millis
+
+            print('\tTick time: {0}'.format(wall()-t))
 
             self.tick_timer.start(min(max(int(millis),mcount), 10000))
 
@@ -811,6 +891,23 @@ class HoppingAnimator(QGraphicsView):
         self.fitInView(rect, Qt.KeepAspectRatio)
         self.scale(2,2)
 
+    def updateSnap(self):
+        '''Update the snapping target'''
+
+        d = 10*self.snapper.r0
+        pos = self.old_pos
+        rect = QRectF(pos.x()-.5*d, pos.y()-.5*d, d, d)
+
+        items = self.scene.items(rect)
+        if items:
+            dist = lambda x: (x.pos()-pos).manhattanLength()
+            cands = filter(lambda x: not isinstance(x, SnapTarget), items)
+            target = min(cands, key = dist)
+        else:
+            target = None
+
+        self.snapper.setTarget(target)
+
     def mousePressEvent(self, e):
         super(HoppingAnimator, self).mousePressEvent(e)
 
@@ -833,27 +930,36 @@ class HoppingAnimator(QGraphicsView):
                     e.accept()
                     return
 
-            item = self.itemAt(e.pos())
+            item = self.snapper.target
             if isinstance(item, DB) and item.bg:
                 item.setCharge(not item.charged)
                 self.model.addCharge(item.xx, item.yy, pos=item.charged)
 
         elif e.button() == Qt.RightButton:
-            item = self.itemAt(e.pos())
+            item = self.snapper.target
             if isinstance(item, DB):
                 self.signal_dbtrack.emit(item.n)
 
     def mouseMoveEvent(self, e):
+
+        scene_pos = self.mapToScene(e.pos())
+        dist = (scene_pos-self.old_pos).manhattanLength()
+
         if self.panning:
             hsb, vsb = self.horizontalScrollBar(), self.verticalScrollBar()
             hsb.setValue(hsb.value()+self.panx-e.x())
             vsb.setValue(vsb.value()+self.pany-e.y())
             self.panx, self.pany = e.x(), e.y()
             e.accept()
+        elif dist > self.snapper.r0:
+            self.old_pos = scene_pos
+            self.updateSnap()
+            e.accept()
 
     def mouseReleaseEvent(self, e):
         if e.button() == Qt.MiddleButton:
             self.setCursor(Qt.ArrowCursor)
+            self.panning = False
             e.accept()
 
     def mouseDoubleClickEvent(self, e):
@@ -964,8 +1070,6 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, e):
 
         if e.key() == Qt.Key_Q:
-            if self.animator.logging:
-                self.animator.logger.close()
             if self.record:
                 self.animator.compile()
             self.close()
@@ -1026,7 +1130,7 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = QCA(40)
+    device = QCA(5)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'

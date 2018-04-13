@@ -23,8 +23,9 @@ class Clock(Channel):
     active = False  # clocking fields are surface independent
     sdflag = False  # no hopping to/from clocking electrodes
 
+    length = 2e3        # clocking signal spacing period, angstroms
+
     # default waveform parameters
-    wf_l    = 2e3       # waveform wavelength, angstroms
     wf_f    = 1e-1      # waveform frequency, Hz
     wf_A    = .1        # waveform ampitude, eV
     wf_0    = 0.        # waveform offset, eV
@@ -78,5 +79,5 @@ class Clock(Channel):
 
     def waveform(self, x, t):
         '''Travelling wave approximation of clocking fields'''
-        phase = 2*np.pi*(x/self.wf_l - self.wf_f*t)
+        phase = 2*np.pi*(x/self.length - self.wf_f*t)
         return self.wf_0 + self.wf_A*np.sin(phase)

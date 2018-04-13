@@ -25,8 +25,9 @@ from clocking import Clock
 from itertools import combinations, chain, product
 from collections import defaultdict
 
-from time import clock as tick
 import sys
+
+from timeit import default_timer as timer
 
 # add non-standard channels
 Channels['tip'] = TipModel
