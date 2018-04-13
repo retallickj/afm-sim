@@ -66,7 +66,7 @@ bool AFMMarcus::runSim()
     // set up call parameters
     pois_result_path = tmp_dir + "/pois_result.xml";
     std::string command = pois_bin_path + " " + inPath() + " " +
-        pois_result_path; //+ " --clock";
+        pois_result_path;
     std::cout << "Calling PoisSolver: " << command << std::endl;
 
     // call the binary
@@ -74,6 +74,7 @@ bool AFMMarcus::runSim()
 
     // save the result as a simulation parameter for AFM Marcus to read
     problem.insertParameter("pois_result_path", pois_result_path);
+    problem.insertParameter("mode", "Clock");
   }
 
 
