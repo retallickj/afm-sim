@@ -19,6 +19,7 @@ from subprocess import Popen
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from PyQt5.QtSvg import QSvgGenerator
 
 from hopper import HoppingModel
 
@@ -26,6 +27,17 @@ from timeit import default_timer as wall
 
 
 _SF = 50     # scale factor
+
+
+class Thread(QThread):
+    def __init__(self, func):
+        super(Thread, self).__init__()
+        self.func = func
+
+    def run(self):
+        ''' '''
+        self.func()
+        self.exec_()
 
 
 class Logger(object):
@@ -172,15 +184,7 @@ class ClockGradient(QLinearGradient):
 
 
 
-class Thread(QThread):
-    def __init__(self, func):
-        super(Thread, self).__init__()
-        self.func = func
 
-    def run(self):
-        ''' '''
-        self.func()
-        self.exec_()
 
 
 class DB(QGraphicsEllipseItem):
@@ -241,7 +245,9 @@ class SnapTarget(QGraphicsEllipseItem):
             self.show()
         else:
             raise KeyError('Snap: Invalid target type...')
+        rect = self.target.boundingRect() if self.target else None
         self.target = target
+        return rect
 
 
 class Tracker(QGraphicsEllipseItem):
@@ -409,13 +415,16 @@ class HoppingAnimator(QGraphicsView):
 
     rate = 1   # speed-up factor
 
-    xpad, ypad = 6, 3
+    xpad, ypad = 8, 4
 
     bgcol = QColor(29, 35, 56)  # background color
     record_dir = './.temp_rec/'
 
     logging = False     # set True for LineView animation
     log_dir = './.temp/'
+
+    zoom_rate = .1
+    zoom_bounds = [.1, 10.]
 
     signal_tick = pyqtSignal()
     signal_dbtrack = pyqtSignal(int)
@@ -492,6 +501,9 @@ class HoppingAnimator(QGraphicsView):
         self.scene.addItem(self.tracker)
         self.scene.addItem(self.snapper)
 
+        self.setStyleSheet('QScrollBar{background:white;}\
+        QScrollBar::handle{background:gray}')
+
         self.old_pos = QPoint(0,0)
 
         if self.tip is not None:
@@ -509,10 +521,10 @@ class HoppingAnimator(QGraphicsView):
         # Set Anchors
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
         self.setResizeAnchor(QGraphicsView.NoAnchor)
+        self.scale_fact = 1.0
 
     def passControls(self, dock):
         '''Add control fields to the given DockWidget'''
-
 
         # hopping controls
 
@@ -759,12 +771,17 @@ class HoppingAnimator(QGraphicsView):
             self.dbs.append(DB(self.a*x,self.b*y, n=n))
             self.scene.addItem(self.dbs[-1])
 
+        # set view rect
+        rect = self.sceneRect()
+        dx, dy = .5*rect.width(), .5*rect.height()
+        self.setSceneRect(rect.adjusted(-dx, -dy, dx, dy))
 
-    def screencapture(self, fname):
+
+    def screencapture(self, fname, vector=False):
         '''Save a screenshot of the QGraphicsScene and save it to the given
-        filename'''
+        filename. Set vector to True if output format is SVG'''
 
-        self.scene.setSceneRect(self.scene.itemsBoundingRect())
+        #self.scene.setSceneRect(self.scene.itemsBoundingRect())
         image = QImage(self.scene.sceneRect().size().toSize(), QImage.Format_ARGB32)
         image.fill(self.bgcol)
 
@@ -772,6 +789,14 @@ class HoppingAnimator(QGraphicsView):
         self.scene.render(painter)
         image.save(fname)
         painter.end()
+
+    def _capturePNG(self, fname):
+        ''' '''
+        pass
+
+    def _captureSVG(self, fname):
+        ''' '''
+        pass
 
 
     def record(self):
@@ -887,9 +912,13 @@ class HoppingAnimator(QGraphicsView):
 
     def zoomExtents(self):
         '''Scale view to contain all items in the scene'''
-        rect = self.scene.itemsBoundingRect()
+
+        # items that define the extents
+
+
         self.fitInView(rect, Qt.KeepAspectRatio)
         self.scale(2,2)
+        self.scale_fact = self.transform().m11()
 
     def updateSnap(self):
         '''Update the snapping target'''
@@ -906,7 +935,9 @@ class HoppingAnimator(QGraphicsView):
         else:
             target = None
 
-        self.snapper.setTarget(target)
+        rect = self.snapper.setTarget(target)
+        if rect is not None:
+            self.scene.update(rect)
 
     def mousePressEvent(self, e):
         super(HoppingAnimator, self).mousePressEvent(e)
@@ -972,6 +1003,33 @@ class HoppingAnimator(QGraphicsView):
                 self.path = []
                 self.tick()
 
+    def wheelEvent(self, e):
+        '''Scrolling behaviour'''
+
+        zooming = e.modifiers() & Qt.ControlModifier
+        if not zooming:
+            super(HoppingAnimator, self).wheelEvent(e)
+            self.update()
+        else:
+            self.wheelZoom(e)
+        e.accept()
+
+    def wheelZoom(self, e):
+        '''Zoom in/out with scroll'''
+
+        pixels = QPointF(e.pixelDelta())
+        degrees = QPointF(e.angleDelta())/120
+        steps = (pixels if pixels else degrees).y()
+
+        scale = self.scale_fact * (1.+self.zoom_rate)**steps
+        lo, hi = self.zoom_bounds
+        scale = max(lo, min(hi, scale))
+
+        old_pos = self.mapToScene(e.pos())
+        self.scale(scale/self.scale_fact, scale/self.scale_fact)
+        delta = self.mapToScene(e.pos())-old_pos
+        self.translate(delta.x(), delta.y())
+        self.scale_fact = scale
 
 
 
@@ -982,6 +1040,8 @@ class MainWindow(QMainWindow):
     WINY = 1000      # window height
 
     ZOOM = .1
+
+    img_dir = os.path.join('.', 'img')  # directory for image saving
 
     def __init__(self, model, record=False, fps=30):
         ''' '''
@@ -1079,17 +1139,19 @@ class MainWindow(QMainWindow):
             self.animator.tick()
         elif e.key() in [Qt.Key_Plus, Qt.Key_Equal]:
             zfact = 1+self.ZOOM
-            self.animator.scale(zfact,zfact)
+            self.animator.scale(zfact, zfact)
         elif e.key() == Qt.Key_Minus:
             zfact = 1-self.ZOOM
             self.animator.scale(zfact, zfact)
         elif e.key() == Qt.Key_D:
             self.debug()
         elif e.key() == Qt.Key_S:
-            fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss.png')
-            fname = os.path.join('.', fname)
+            vector = e.modifiers & Qt.ShiftModifier
+            ext = '.svg' if vector else '.png'
+            fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')+ext
+            fname = os.path.join(self.img_dir, fname)
+            self.animator.screencapture(fname, vector)
             print('Screenshot saved to: {0}'.format(os.path.normpath(fname)))
-            self.animator.screencapture(fname)
         elif e.key() == Qt.Key_P:
             self.animator.pause()
         elif e.key() == Qt.Key_L:
