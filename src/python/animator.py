@@ -643,8 +643,7 @@ class HoppingAnimator(QGraphicsView):
 
             val, func = self.bulk.mu, lambda v: self.setPar(self.bulk, 'mu', v)
             dock.addSlider('mu', 0., .5, .01, val, func,
-                'Chemical Potential: local potential at which charges will hop \
-                between the bulk and the surface')
+                'Chemical Potential: local potential at which charges will hop between the bulk and the surface')
 
             val = np.log10(self.bulk.nu)
             func = lambda v: self.setPar(self.bulk, 'nu', 10**v)
@@ -1319,8 +1318,7 @@ if __name__ == '__main__':
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
 
-    log = os.path.join(HoppingAnimator.log_dir, 'hops.log')
-    model = HoppingModel(device, model='marcus', log=log)
+    model = HoppingModel(device, model='marcus')
     model.addChannel('bulk')
     model.addChannel('clock')
     #model.addChannel('tip')

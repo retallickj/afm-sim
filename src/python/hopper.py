@@ -25,7 +25,7 @@ from clocking import Clock
 from itertools import combinations, chain, product
 from collections import defaultdict
 
-import sys
+import sys, os
 
 from timeit import default_timer as timer
 
@@ -88,7 +88,7 @@ class HoppingModel:
             model   : Type of hopping rate model
 
         optional key-val arguments:
-            log     : file name for logging all hopping events
+
         '''
 
         # format and store db locations and number
@@ -124,9 +124,8 @@ class HoppingModel:
         self.channels = []
         self.initialised = False
 
-        self.fplog = None
-        if 'log' in kwargs:
-            self._setupLogging(kwargs['log'])
+        # logging parameters
+        self.fplog, self.logging = None, False
 
     def cleanup(self):
         print('Closing Hopping Model')
@@ -348,16 +347,21 @@ class HoppingModel:
 
         return dt, T, ind
 
-    def burn(self, nhops):
-        '''Burns through the given number of hopping events'''
+    def burn(self, nhops, per=False):
+        '''Burns through the given number of hopping events. If per is True,
+        performs nhops*self.N hops'''
 
         # supress printing for burn
         self.vprint, tprint = lambda *a, **k: None, self.vprint
+
+        if per:
+            nhops *= self.N
 
         for n in range(nhops):
             sys.stdout.write("\rBurning: {0:3.1f}%".format((n+1)*100./nhops))
             sys.stdout.flush()
             self.run(self.peek()[0])
+        print('\n')
 
         self.vprint = tprint
 
@@ -389,10 +393,10 @@ class HoppingModel:
 
 
     def run(self, dt):
-        '''Run the inherent dynamics for the given number of seconds'''
+        '''Run the inherent dynamics for the given number of seconds.'''
 
         while dt>0:
-            dt -= self.step(dt)
+            dt -= self.step(dt=dt)
 
     def measure(self, ind, dt=0.):
         '''Make a measurement of the indicated db after the given number of
@@ -403,6 +407,7 @@ class HoppingModel:
 
         # return the charge state of the requested db
         return self.charge[ind]
+
 
     def getLifetime(self, db):
         '''Get the expected lifetime, in seconds, of the given DB'''
@@ -416,6 +421,7 @@ class HoppingModel:
             return self.lifetimes[db]/(self.MTR+self.tickrates[ind])
         return 0.
 
+
     def computeEnergy(self, occ=None):
         '''Direct energy computation for the current charge configurations'''
 
@@ -423,6 +429,7 @@ class HoppingModel:
         beff = self.bias - .5*np.sum(self.V[:,inds], axis=1)
         beff += sum(ch.scale*ch.biases(inds) for ch in self.channels)
         return -np.sum(beff[inds])
+
 
     def addCharge(self, x, y, pos=True):
         '''Add the potential contribution from a charge at location (x,y). If pos
@@ -434,6 +441,7 @@ class HoppingModel:
         self.bias -= V if pos else -V
         self.update()
 
+
     def getLevels(self, src):
         '''Get the effective relative level shifts for the occupied src DB to
         possible targets'''
@@ -444,6 +452,31 @@ class HoppingModel:
         beff = self.beff[src]
         return {trg: beff - dg for trg, dg in self.dG[src].items()}
 
+    def startLog(self, fname):
+        '''Open/Construct the log file and begin logging'''
+
+        self.endLog()   # close any existing log, logging = False
+
+        direc = os.path.dirname(fname)
+        if not os.path.isdir(direc):
+            print('Creating directory: {0}'.format(direc))
+            os.makedirs(direc)
+
+        try:
+            self.fplog = open(fname, 'w')
+            self.logging = True
+        except:
+            print('Failed to open log file: {0}'.format(fname))
+            self.fplog = None
+
+    def endLog(self):
+        '''Close the log file and stop logging'''
+
+        if self.fplog is not None:
+            print('Closing previous log...')
+            self.fplog.close()
+        self.logging = False
+
 
 
     # internal methods
@@ -451,6 +484,7 @@ class HoppingModel:
     def _index(self, db):
         '''Get the index of the db in self.state'''
         return int(np.where(self.state==db)[0])
+
 
     def _parseX(self, X):
         '''Parse the DB location information'''
@@ -483,6 +517,7 @@ class HoppingModel:
                 if (i,j) in self.ch_targets:
                     self.ch_pairs[i].add(j)
 
+
     def _advance(self, dt):
         '''Advance the lifetimes and channels by the given time'''
 
@@ -496,6 +531,7 @@ class HoppingModel:
                 self.ch_lifetimes[ij] -= dt*tickrate
 
         self.clock += dt
+
 
     def _hop_handler(self, T, ind):
         '''Handle all the possible hopping cases.'''
@@ -512,7 +548,7 @@ class HoppingModel:
         else:
             raise KeyError('Unrecognized hopping type')
         self.energy = self.computeEnergy()
-        if self.fplog is not None:
+        if self.logging and self.fplog is not None:
             self._logState()
 
         self.clock = 0.
@@ -617,7 +653,6 @@ class HoppingModel:
         state = int(''.join(str(c) for c in self.charge), base=2)
         hx = format(state, '0{0}x'.format(1+(self.N-1)//4))
         s = '{0:.4e} :: '.format(self.clock) + '0x{0}\n'.format(hx)
-        print(s)
         self.fplog.write(s)
 
 
