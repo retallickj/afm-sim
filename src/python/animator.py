@@ -63,7 +63,7 @@ class Logger(object):
         self.view, self.viewing = view, False
         self.P = None
 
-    def __del__(self):
+    def cleanup(self):
 
         print('Logger being closed')
 
@@ -553,10 +553,12 @@ class HoppingAnimator(QGraphicsView):
         self.dbn = -1
         self.state = {}
 
-    def __del__(self):
+    def cleanup(self):
         #super(HoppingAnimator, self).__del__()
+        print('pings')
         if self.logger:
-            del self.logger
+            self.logger.cleanup()
+        self.model.cleanup()
 
     def _initGUI(self):
         '''Initialise the animator window'''
@@ -1249,6 +1251,7 @@ class MainWindow(QMainWindow):
         if e.key() == Qt.Key_Q:
             if self.record:
                 self.animator.compile()
+            self.animator.cleanup()
             self.close()
         elif e.key() == Qt.Key_O:
             self.dock.setVisible(not self.dock.isVisible())
@@ -1310,12 +1313,14 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = QCA(10)
+    device = _or
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
-    model = HoppingModel(device, model='marcus')
+
+    log = os.path.join(HoppingAnimator.log_dir, 'hops.log')
+    model = HoppingModel(device, model='marcus', log=log)
     model.addChannel('bulk')
     model.addChannel('clock')
     #model.addChannel('tip')

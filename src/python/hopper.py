@@ -88,7 +88,7 @@ class HoppingModel:
             model   : Type of hopping rate model
 
         optional key-val arguments:
-            None
+            log     : file name for logging all hopping events
         '''
 
         # format and store db locations and number
@@ -123,6 +123,15 @@ class HoppingModel:
         self.model = Models[model]()
         self.channels = []
         self.initialised = False
+
+        self.fplog = None
+        if 'log' in kwargs:
+            self._setupLogging(kwargs['log'])
+
+    def cleanup(self):
+        print('Closing Hopping Model')
+        if self.fplog is not None:
+            self.fplog.close()
 
     def fixElectronCount(self, n):
         '''Fix the number of electrons in the system. Use n<0 to re-enable
@@ -224,6 +233,8 @@ class HoppingModel:
         if charges is None:
             # burn off random initial state
             self.burn(self.burn_count*self.N)
+
+        self.clock = 0.    # time between events for logging
 
 
     def computeBeff(self, occ, wch=False):
@@ -484,6 +495,8 @@ class HoppingModel:
             for ij, tickrate in self.ch_tickrates.items():
                 self.ch_lifetimes[ij] -= dt*tickrate
 
+        self.clock += dt
+
     def _hop_handler(self, T, ind):
         '''Handle all the possible hopping cases.'''
 
@@ -499,6 +512,10 @@ class HoppingModel:
         else:
             raise KeyError('Unrecognized hopping type')
         self.energy = self.computeEnergy()
+        if self.fplog is not None:
+            self._logState()
+
+        self.clock = 0.
 
     def _cohop(self, ij):
         '''Perform a cohop with the given pair i,j'''
@@ -594,3 +611,20 @@ class HoppingModel:
         return self.dG[i][k]+self.dG[j][l] \
             + (self.V[k,l]+self.V[i,j]) \
             - (self.V[i,l]+self.V[j,k])
+
+    def _logState(self):
+        '''Log the time since the last event and the current charge state'''
+        state = int(''.join(str(c) for c in self.charge), base=2)
+        hx = format(state, '0{0}x'.format(1+(self.N-1)//4))
+        s = '{0:.4e} :: '.format(self.clock) + '0x{0}\n'.format(hx)
+        print(s)
+        self.fplog.write(s)
+
+
+    def _setupLogging(self, fname):
+
+        try:
+            self.fplog = open(fname, 'w')
+        except:
+            print('Failed to open log file: {0}'.format(fname))
+            self.fplog = None
