@@ -932,8 +932,8 @@ class HoppingAnimator(QGraphicsView):
         rect = items.pop().boundingRect()
         for item in items:
             rect |= item.boundingRect()
-        ds = _SF*self.a
-        rect.adjust(-ds, -ds, ds, ds)
+        dx, dy = _SF*self.a, _SF*self.c
+        rect.adjust(-dx, -dy, dx, dy)
 
         return rect
 
