@@ -424,7 +424,7 @@ class HoppingAnimator(QGraphicsView):
     log_dir = './.temp/'
 
     zoom_rate = .1
-    zoom_bounds = [.1, 10.]
+    zoom_bounds = [.01, 5.]
 
     signal_tick = pyqtSignal()
     signal_dbtrack = pyqtSignal(int)
@@ -521,7 +521,9 @@ class HoppingAnimator(QGraphicsView):
         # Set Anchors
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
         self.setResizeAnchor(QGraphicsView.NoAnchor)
-        self.scale_fact = 1.0
+
+        self.zoomExtents()
+        self.update()
 
     def passControls(self, dock):
         '''Add control fields to the given DockWidget'''
@@ -911,14 +913,26 @@ class HoppingAnimator(QGraphicsView):
 
 
     def zoomExtents(self):
-        '''Scale view to contain all items in the scene'''
+        '''Scale view to contain all items in the scene. Return the bounding
+        rect of the extents.'''
+
 
         # items that define the extents
+        ignore = lambda x: (isinstance(x, DB) and x.bg and not x.charged) or \
+                                isinstance(x, SnapTarget)
+        items = [x for x in self.scene.items() if not ignore(x)]
 
-
+        # union of bounding boxes
+        rect = items.pop().boundingRect()
+        for item in items:
+            rect |= item.boundingRect()
+        ds = _SF*self.a
+        rect.adjust(-ds, -ds, ds, ds)
         self.fitInView(rect, Qt.KeepAspectRatio)
-        self.scale(2,2)
+        self.centerOn(rect.center())
+
         self.scale_fact = self.transform().m11()
+        return rect
 
     def updateSnap(self):
         '''Update the snapping target'''
@@ -1068,7 +1082,6 @@ class MainWindow(QMainWindow):
 
         self.setGeometry(100, 100, self.WINX, self.WINY)
         self.setCentralWidget(self.animator)
-        self.animator.zoomExtents()
 
     def createDock(self):
         '''Create the dock widget for simulation options'''
@@ -1138,13 +1151,15 @@ class MainWindow(QMainWindow):
         elif e.key() == Qt.Key_Space:
             self.animator.tick()
         elif e.key() in [Qt.Key_Plus, Qt.Key_Equal]:
-            zfact = 1+self.ZOOM
+            zfact = 1+self.animator.zoom_rate
             self.animator.scale(zfact, zfact)
         elif e.key() == Qt.Key_Minus:
-            zfact = 1-self.ZOOM
+            zfact = 1-self.animator.zoom_rate
             self.animator.scale(zfact, zfact)
         elif e.key() == Qt.Key_D:
             self.debug()
+        elif e.key() == Qt.Key_E:
+            self.animator.zoomExtents()
         elif e.key() == Qt.Key_S:
             vector = e.modifiers & Qt.ShiftModifier
             ext = '.svg' if vector else '.png'
@@ -1192,7 +1207,7 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = QCA(5)
+    device = QCA(10)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
