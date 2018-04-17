@@ -106,21 +106,22 @@ class Logger(object):
 
 class ClockGradient(QLinearGradient):
 
-    cmap = [ QColor(0,0,255,0),    # minimum clocking field color shift
+    colors = [ QColor(0,0,255,50),    # minimum clocking field color shift
              QColor(0,0,0,0),     # mid value color shift
-             QColor(255,0,0,0)     # maximum clocking field color shift
+             QColor(255,0,0,50)     # maximum clocking field color shift
             ]
 
-    steps = 10
+    steps = 30
     mixfact = .1
 
-    def __init__(self, clock, rect, bg):
+    nwaves = 1
+
+    def __init__(self, clock, rect):
         '''Initialise the clocking gradient display.
 
         inputs:
             clock   : object with clock.length and clock.waveform(x)
             rect    : bounding rect of object to display gradient
-            bg      : background QColor,
         '''
         super(ClockGradient, self).__init__()
 
@@ -130,7 +131,6 @@ class ClockGradient(QLinearGradient):
         self.setStart(rect.left(),0)
         self.setFinalStop(rect.right(),0)
 
-        self.colors = [self.mixColor(bg, c) for c in self.cmap]
         self.prepareClock()
 
 
@@ -138,7 +138,7 @@ class ClockGradient(QLinearGradient):
         '''Set up the clocking waveform gradient stops'''
 
         xx = np.linspace(0,1,self.steps)
-        yy = self.clock.waveform(xx*self.clock.length, 0)
+        yy = self.clock.waveform(self.nwaves*xx*self.clock.length, 0)
 
         mn, mx = np.min(yy), np.max(yy)
         interp = lambda v: self._interpolate((v-mn)/(mx-mn))
@@ -150,7 +150,7 @@ class ClockGradient(QLinearGradient):
         '''Track the clock by adjusting the stop coordinates'''
 
         # for now, assume waveform extrema at +- wlength/4 at t=0
-        xx = self.clock.length*np.array([0,1])
+        xx = self.clock.length*np.array([0,self.nwaves])
 
         # advance minimum position by current time
         xx += self.clock.length*self.clock.wf_f*self.clock.t
@@ -173,49 +173,100 @@ class ClockGradient(QLinearGradient):
         c = 2*(f1*np.array(c1.getRgb())+f2*np.array(c2.getRgb()))
         return QColor(*c)
 
-    @classmethod
-    def mixColor(cls,c1,c2):
-        '''RGBA mixing of two QColors'''
-
-        c = np.array(c1.getRgb()) + cls.mixfact*np.array(c2.getRgb())
-        np.clip(c, 0, 255)
-
-        return QColor(*c)
-
-
-
-
-
 
 class DB(QGraphicsEllipseItem):
 
-    pen     = QPen(QColor("white"), .2*_SF)     # DB edge pen
-    bgpen   = QPen(QColor(255,255,255,50), .2*_SF, Qt.DotLine)
-
-    pfill   = QBrush(QColor("orange"))     # charged DB for fixed perturbers
-    fill    = QBrush(Qt.green)      # charged DB fill color
-    nofill  = QBrush(Qt.NoBrush)    # uncharged DB fill color
-
     D = 1.8*_SF              # dot diameter
+
+    normal = {
+     # DB edge pens
+     'pen':     QPen(QColor("white"), .2*_SF),   # DB edge pen
+     'bgpen':   QPen(QColor(255,255,255,50), .2*_SF, Qt.DotLine),
+
+     # fill color
+     'pfill':   QBrush(QColor("orange")),   # fixed perturber fill
+     'fill':    QBrush(Qt.green),           # charged DB fill
+     'nofill':  QBrush(Qt.NoBrush),         # uncharged DB fill
+
+     # diameters
+     'dbD':     D,      # DB diameter
+     'latD':    D       # lattice dot diameter
+    }
+
+    capture = {
+     # DB edge pens
+     'pen':     QPen(QColor("black"), .2*_SF),   # DB edge pen
+     'bgpen':   QPen(QColor("gray"), .2*_SF, Qt.DotLine),
+
+     # fill color
+     'pfill':   QBrush(QColor("orange")),   # fixed perturber fill
+     'fill':    QBrush(Qt.red),             # charged DB fill
+     'nofill':  QBrush(Qt.NoBrush),         # uncharged DB fill
+
+     # diameters
+     'dbD':     1.5*D,  # DB diameter
+     'latD':    0.7*D   # lattice dot diameter
+    }
+
 
     def __init__(self, x, y, n=-1, bg=False, parent=None):
         super(DB, self).__init__(_SF*x, _SF*y, self.D, self.D, parent=parent)
         self.xx, self.yy, self.n = x, y, n
-        self.setPen(self.bgpen if bg else self.pen)
+        self.setPen(self.normal['bgpen'] if bg else self.normal['pen'])
         self.setCharge(False)
         self.bg = bg
+        self._setDiameter(self.normal['latD' if not bg else 'dbD'])
         if not bg:
             self.setZValue(2)
+        self.state = {}
 
     def setCharge(self, charged):
         '''Set the charge state of the DB'''
         self.charged = charged
         if charged:
-            brush = self.pfill if self.bg else self.fill
+            brush = self.normal['pfill'] if self.bg else self.normal['fill']
         else:
-            brush = self.nofill
+            brush = self.normal['nofill']
 
         self.setBrush(brush)
+
+    def setCapture(self):
+        '''Set paint parameters for capture mode'''
+
+        D = self.capture['dbD' if (not self.bg or self.charged) else 'latD']
+        self.state['D'] = self._setDiameter(D)
+        self.state['pen'] = self.pen()
+        self.state['brush'] = self.brush()
+
+        pen = self.capture['bgpen' if self.bg else 'pen']
+        self.setPen(pen)
+
+        if self.charged:
+            brush = self.capture['pfill' if self.bg else 'fill']
+        else:
+            brush = self.capture['nofill']
+        self.setBrush(brush)
+
+    def unsetCapture(self):
+        '''Restore paint state after capture mode'''
+
+        self._setDiameter(self.state['D'])
+        self.setPen(self.state['pen'])
+        self.setBrush(self.state['brush'])
+
+    def _setDiameter(self, D):
+        '''Update the dot diameter and return the old one'''
+
+        rect = self.boundingRect()
+        d = rect.width() - self.pen().width()
+        center = rect.center()
+
+        rect.setSize(QSizeF(D,D))
+        rect.moveCenter(center)
+        self.setRect(rect)
+
+        return d
+
 
 
 class SnapTarget(QGraphicsEllipseItem):
@@ -236,6 +287,7 @@ class SnapTarget(QGraphicsEllipseItem):
         self.hide()
 
         self.target = None
+        self.state = {}
 
     def setTarget(self, target=None):
         if target is None:
@@ -248,6 +300,14 @@ class SnapTarget(QGraphicsEllipseItem):
         rect = self.target.boundingRect() if self.target else None
         self.target = target
         return rect
+
+    def setCapture(self):
+        self.state['vis'] = self.isVisible()
+        self.hide()
+
+    def unsetCapture(self):
+        if self.state['vis']:
+            self.show()
 
 
 class Tracker(QGraphicsEllipseItem):
@@ -262,10 +322,19 @@ class Tracker(QGraphicsEllipseItem):
         self.setPen(self.pen)
         self.setBrush(QBrush(Qt.NoBrush))
         self.hide()
+        self.state = {}
 
     def track(self, db):
         self.setPos(_SF*db.xx - self.dd , _SF*db.yy - self.dd)
         self.show()
+
+    def setCapture(self):
+        self.state['vis'] = self.isVisible()
+        self.hide()
+
+    def unsetCapture(self):
+        if self.state['vis']:
+            self.show()
 
 
 
@@ -482,6 +551,7 @@ class HoppingAnimator(QGraphicsView):
         self.path = []
 
         self.dbn = -1
+        self.state = {}
 
     def __del__(self):
         #super(HoppingAnimator, self).__del__()
@@ -511,11 +581,9 @@ class HoppingAnimator(QGraphicsView):
             self.scene.addItem(self.tip_item)
 
         if self.clock is not None:
-            self.gradient = ClockGradient(
-                    self.clock, self.scene.sceneRect(), self.bgcol)
-            self.scene.setBackgroundBrush(self.gradient)
-        else:
-            self.scene.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
+            self.gradient = ClockGradient(self.clock, self.scene.sceneRect())
+            self.scene.setForegroundBrush(self.gradient)
+        self.scene.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
         self.setWindowTitle('Hopping Animator')
 
         # Set Anchors
@@ -799,7 +867,7 @@ class HoppingAnimator(QGraphicsView):
 
         if not self.paused:
 
-            print('\n\n Tick start:'); t = wall()
+            # print('\n\n Tick start:'); t = wall()
 
             # draw last state
             for i,c in enumerate(self.model.charge):
@@ -810,7 +878,7 @@ class HoppingAnimator(QGraphicsView):
 
             if self.clock is not None:
                 self.gradient.updateColors()
-                self.scene.setBackgroundBrush(self.gradient)
+                self.scene.setForegroundBrush(self.gradient)
 
             self.update()
             self.signal_tick.emit()
@@ -819,7 +887,7 @@ class HoppingAnimator(QGraphicsView):
             if self.logging:
                 self.log()
 
-            print('\tLogging: {0}'.format(wall()-t)); t = wall()
+            # print('\tLogging: {0}'.format(wall()-t)); t = wall()
 
             # update hopper state
             mcount = 30
@@ -829,9 +897,29 @@ class HoppingAnimator(QGraphicsView):
                 millis = dt*1000./self.rate
                 milli -= millis
 
-            print('\tTick time: {0}'.format(wall()-t))
+            # print('\tTick time: {0}'.format(wall()-t))
 
             self.tick_timer.start(min(max(int(millis),mcount), 10000))
+
+
+    def setCapture(self):
+        self.state['bg'] = self.scene.backgroundBrush()
+        self.state['fg'] = self.scene.foregroundBrush()
+        self.scene.setBackgroundBrush(QBrush(Qt.NoBrush))
+        self.scene.setForegroundBrush(QBrush(Qt.NoBrush))
+
+        for item in self.scene.items():
+            if hasattr(item, 'setCapture'):
+                item.setCapture()
+
+
+    def unsetCapture(self):
+        self.scene.setBackgroundBrush(self.state['bg'])
+        self.scene.setForegroundBrush(self.state['fg'])
+
+        for item in self.scene.items():
+            if hasattr(item, 'unsetCapture'):
+                item.unsetCapture()
 
     def extents(self):
         '''Get the bounding box for the design ignoring thje H sites'''
@@ -876,6 +964,7 @@ class HoppingAnimator(QGraphicsView):
             canvas.setFileName(fname)
             canvas.setSize(source.size().toSize())
             canvas.setViewBox(target)
+            self.setCapture()
         else:
             canvas = QImage(source.size().toSize(), QImage.Format_ARGB32)
 
@@ -886,6 +975,10 @@ class HoppingAnimator(QGraphicsView):
 
         if not vector:
             canvas.save(fname)
+        else:
+            self.unsetCapture()
+
+        print('Screenshot saved: {0}'.format(fname))
 
     def updateSnap(self):
         '''Update the snapping target'''
@@ -1044,8 +1137,11 @@ class HoppingAnimator(QGraphicsView):
 
         # foreground
         self.dbs = []
-        for n, (x,y) in enumerate(zip(self.X, self.Y)):
-            self.dbs.append(DB(self.a*x,self.b*y, n=n))
+        for n, (x,y) in enumerate(zip(self.a*self.X, self.b*self.Y)):
+            _x, _y, w = _SF*x, _SF*y, _SF*1
+            item = self.scene.items(QRectF(_x, _y, w, w))[0]
+            item.hide()
+            self.dbs.append(DB(x, y, n=n))
             self.scene.addItem(self.dbs[-1])
 
         # set view rect
