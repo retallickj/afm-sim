@@ -418,10 +418,10 @@ class HoppingAnimator(QGraphicsView):
     xpad, ypad = 8, 4
 
     bgcol = QColor(29, 35, 56)  # background color
-    record_dir = './.temp_rec/'
+    record_dir = os.path.join('.', '.temp_rec/')
 
     logging = False     # set True for LineView animation
-    log_dir = './.temp/'
+    log_dir = os.path.join('.', '.temp/')
 
     zoom_rate = .1
     zoom_bounds = [.01, 5.]
@@ -699,7 +699,6 @@ class HoppingAnimator(QGraphicsView):
             dock.addLayout(hb)
 
 
-
     def setPar(self, obj, attr, val, tc=1):
         setattr(obj, attr, val)
         for _ in range(tc):
@@ -755,51 +754,6 @@ class HoppingAnimator(QGraphicsView):
         self.path = []
         self.tick()
 
-    def _drawDBs(self):
-        '''Draw all the DBs for the animator'''
-
-        # background
-        X = np.arange(np.min(self.X)-self.xpad, np.max(self.X)+self.xpad+1)
-        Y = np.arange(round(np.min(self.Y))-self.ypad, round(np.max(self.Y))+self.ypad+1)
-
-        f = self.c/self.b
-        for x,y in product(X,Y):
-            self.scene.addItem(DB(self.a*x, self.b*y, bg=True))
-            self.scene.addItem(DB(self.a*x, self.b*(y+f), bg=True))
-
-        # foreground
-        self.dbs = []
-        for n, (x,y) in enumerate(zip(self.X, self.Y)):
-            self.dbs.append(DB(self.a*x,self.b*y, n=n))
-            self.scene.addItem(self.dbs[-1])
-
-        # set view rect
-        rect = self.sceneRect()
-        dx, dy = .5*rect.width(), .5*rect.height()
-        self.setSceneRect(rect.adjusted(-dx, -dy, dx, dy))
-
-
-    def screencapture(self, fname, vector=False):
-        '''Save a screenshot of the QGraphicsScene and save it to the given
-        filename. Set vector to True if output format is SVG'''
-
-        #self.scene.setSceneRect(self.scene.itemsBoundingRect())
-        image = QImage(self.scene.sceneRect().size().toSize(), QImage.Format_ARGB32)
-        image.fill(self.bgcol)
-
-        painter = QPainter(image)
-        self.scene.render(painter)
-        image.save(fname)
-        painter.end()
-
-    def _capturePNG(self, fname):
-        ''' '''
-        pass
-
-    def _captureSVG(self, fname):
-        ''' '''
-        pass
-
 
     def record(self):
         '''Record the QGraphicsScene at the given fps'''
@@ -841,7 +795,7 @@ class HoppingAnimator(QGraphicsView):
         self.paused = not self.paused
 
     def tick(self):
-        ''' '''
+        '''Time stepping protocol'''
 
         if not self.paused:
 
@@ -879,6 +833,79 @@ class HoppingAnimator(QGraphicsView):
 
             self.tick_timer.start(min(max(int(millis),mcount), 10000))
 
+    def extents(self):
+        '''Get the bounding box for the design ignoring thje H sites'''
+
+        ignore = lambda x: (isinstance(x, DB) and x.bg and not x.charged) or \
+                                isinstance(x, SnapTarget)
+        items = [x for x in self.scene.items() if not ignore(x)]
+
+        # union of bounding boxes
+        rect = items.pop().boundingRect()
+        for item in items:
+            rect |= item.boundingRect()
+        ds = _SF*self.a
+        rect.adjust(-ds, -ds, ds, ds)
+
+        return rect
+
+    def zoomExtents(self):
+        '''Scale view to contain all items in the scene.'''
+
+        rect = self.extents()
+
+        self.fitInView(rect, Qt.KeepAspectRatio)
+        self.centerOn(rect.center())
+
+        self.scale_fact = self.transform().m11()
+
+    def screencapture(self, fname, vector=False, rect=None):
+        '''Save a screenshot of the QGraphicsScene and save it to the given
+        filename. Set vector to True if output format is SVG'''
+
+        source = self.extents() if rect is None else rect
+        target = source.translated(-source.topLeft())
+
+        # create directory if non-existant
+        direc = os.path.dirname(fname)
+        if not os.path.isdir(direc):
+            os.makedirs(direc)
+
+        if vector:
+            canvas = QSvgGenerator()
+            canvas.setFileName(fname)
+            canvas.setSize(source.size().toSize())
+            canvas.setViewBox(target)
+        else:
+            canvas = QImage(source.size().toSize(), QImage.Format_ARGB32)
+
+
+        painter = QPainter(canvas)
+        self.scene.render(painter, target, source)
+        painter.end()
+
+        if not vector:
+            canvas.save(fname)
+
+    def updateSnap(self):
+        '''Update the snapping target'''
+
+        d = 10*self.snapper.r0
+        pos = self.old_pos
+        rect = QRectF(pos.x()-.5*d, pos.y()-.5*d, d, d)
+
+        items = self.scene.items(rect)
+        if items:
+            dist = lambda x: (x.pos()-pos).manhattanLength()
+            cands = filter(lambda x: not isinstance(x, SnapTarget), items)
+            target = min(cands, key = dist)
+        else:
+            target = None
+
+        rect = self.snapper.setTarget(target)
+        if rect is not None:
+            self.scene.update(rect)
+
     def log(self):
         ''' '''
 
@@ -910,48 +937,6 @@ class HoppingAnimator(QGraphicsView):
             out['tbias'] =  {str(k):v for k,v in tbias.items()}
 
         self.logger.log(out)
-
-
-    def zoomExtents(self):
-        '''Scale view to contain all items in the scene. Return the bounding
-        rect of the extents.'''
-
-
-        # items that define the extents
-        ignore = lambda x: (isinstance(x, DB) and x.bg and not x.charged) or \
-                                isinstance(x, SnapTarget)
-        items = [x for x in self.scene.items() if not ignore(x)]
-
-        # union of bounding boxes
-        rect = items.pop().boundingRect()
-        for item in items:
-            rect |= item.boundingRect()
-        ds = _SF*self.a
-        rect.adjust(-ds, -ds, ds, ds)
-        self.fitInView(rect, Qt.KeepAspectRatio)
-        self.centerOn(rect.center())
-
-        self.scale_fact = self.transform().m11()
-        return rect
-
-    def updateSnap(self):
-        '''Update the snapping target'''
-
-        d = 10*self.snapper.r0
-        pos = self.old_pos
-        rect = QRectF(pos.x()-.5*d, pos.y()-.5*d, d, d)
-
-        items = self.scene.items(rect)
-        if items:
-            dist = lambda x: (x.pos()-pos).manhattanLength()
-            cands = filter(lambda x: not isinstance(x, SnapTarget), items)
-            target = min(cands, key = dist)
-        else:
-            target = None
-
-        rect = self.snapper.setTarget(target)
-        if rect is not None:
-            self.scene.update(rect)
 
     def mousePressEvent(self, e):
         super(HoppingAnimator, self).mousePressEvent(e)
@@ -1044,6 +1029,29 @@ class HoppingAnimator(QGraphicsView):
         delta = self.mapToScene(e.pos())-old_pos
         self.translate(delta.x(), delta.y())
         self.scale_fact = scale
+
+    def _drawDBs(self):
+        '''Draw all the DBs for the animator'''
+
+        # background
+        X = np.arange(np.min(self.X)-self.xpad, np.max(self.X)+self.xpad+1)
+        Y = np.arange(round(np.min(self.Y))-self.ypad, round(np.max(self.Y))+self.ypad+1)
+
+        f = self.c/self.b
+        for x,y in product(X,Y):
+            self.scene.addItem(DB(self.a*x, self.b*y, bg=True))
+            self.scene.addItem(DB(self.a*x, self.b*(y+f), bg=True))
+
+        # foreground
+        self.dbs = []
+        for n, (x,y) in enumerate(zip(self.X, self.Y)):
+            self.dbs.append(DB(self.a*x,self.b*y, n=n))
+            self.scene.addItem(self.dbs[-1])
+
+        # set view rect
+        rect = self.sceneRect()
+        dx, dy = .5*rect.width(), .5*rect.height()
+        self.setSceneRect(rect.adjusted(-dx, -dy, dx, dy))
 
 
 
@@ -1161,12 +1169,11 @@ class MainWindow(QMainWindow):
         elif e.key() == Qt.Key_E:
             self.animator.zoomExtents()
         elif e.key() == Qt.Key_S:
-            vector = e.modifiers & Qt.ShiftModifier
+            vector = e.modifiers() & Qt.ShiftModifier
             ext = '.svg' if vector else '.png'
             fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')+ext
             fname = os.path.join(self.img_dir, fname)
             self.animator.screencapture(fname, vector)
-            print('Screenshot saved to: {0}'.format(os.path.normpath(fname)))
         elif e.key() == Qt.Key_P:
             self.animator.pause()
         elif e.key() == Qt.Key_L:
