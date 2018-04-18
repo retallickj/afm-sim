@@ -94,8 +94,10 @@ class VRHModel(BaseModel):
     # model-specific parameters
     prefact = 1.e11     # scaling prefactor for rates
 
-    lamb    = 0.03      # self-trapping energy, eV
+    lamb    = 0.02      # self-trapping energy, eV
     expmax  = 1e2       # maximum argument for exp(x)
+
+    cohop_alph = 1e-2
 
     def __init__(self):
         super(VRHModel, self).__init__()
@@ -117,6 +119,18 @@ class VRHModel(BaseModel):
         arg = arg*mask + self.expmax*(1-mask)
         return np.exp(arg)
 
+    def cohopping_rate(self, dG, ij, kl):
+        ''' '''
+
+        i,j = ij
+        k,l = kl
+        t0 = np.sqrt(self.T0[i,k]*self.T0[j,l]+self.T0[i,l]*self.T0[j,k])
+        t0 *= np.exp(-self.cohop_alph*self.R[i,j])
+
+        arg = -self.beta*(dG+self.lamb)/self.ktf
+        return t0*self._exp(arg)
+
+
 
 class MarcusModel(BaseModel):
     '''Marcus Theory model for hopping rates'''
@@ -125,7 +139,7 @@ class MarcusModel(BaseModel):
     lamb    = 0.04      # reorganization energy, eV
 
     # transfer integral parameters
-    prefact = 1e-3      # prefactor
+    prefact = 1e-5      # prefactor
 
     # cohopping parameters
     cohop_lamb = lamb   # cohopping reorganization energy, eV

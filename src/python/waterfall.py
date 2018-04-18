@@ -22,8 +22,10 @@ from matplotlib.colors import LinearSegmentedColormap
 class Waterfall:
 
     log_fn = os.path.join('.', '.temp', 'waterfall.log')
+    img_fn = os.path.join('.', 'img', 'waterfall.pdf')
+
     ppnm = 50   # pixels per nm
-    sig = .5    # 'atom diameter', in nm
+    sig = .8    # 'atom diameter'
 
     lo, hi = 1., 2.     # amplitudes of unoccupied/occupied DBs
 
@@ -51,28 +53,37 @@ class Waterfall:
 
 
 
-    def generate(self, nscans=100, srate=10.0, pad=1.0):
+    def generate(self, nscans=100, srate=10.0, pad=1.0, mu=.25, lamb=0.04):
         '''Generate the waterfall image.
 
         inputs:
             nscans  : number of line scans
             srate   : tip scan rate, in nm/s
             pad     : padding on either side of device, in nm
+            mu      : Ef-DB- difference, eV
+            lamb    : self-trapping energy
         '''
 
-        # burn
         if not self.hopper.initialised:
             self.hopper.initialise()
+
+        bulk = self.hopper.getChannel('bulk')
+        if bulk is not None:
+            bulk.mu = mu
+
+        self.hopper.model.setLambda(lamb)
+
+        # burn
         self.hopper.burn(10, per=True)
 
         # determine run time of scan
         xlo, xhi = np.min(self.X)-pad, np.max(self.X)+pad
 
-        T = nscans*(xhi-xlo)/srate
+        self.T = nscans*(xhi-xlo)/srate
 
         # populate hopping log
         self.hopper.startLog(self.log_fn)
-        self.hopper.run(T)
+        self.hopper.run(self.T)
         self.hopper.endLog()
 
         # simulate scan process
@@ -82,6 +93,7 @@ class Waterfall:
         '''Parse the time and state information from the log file'''
 
         with open(self.log_fn, 'r') as fp:
+            state = self.hopper.charge
             for line in fp:
                 t, s = line.split(' :: ')
                 t = float(t)
@@ -124,17 +136,33 @@ class Waterfall:
             data[m,:] = lo_val + data[m,:]*(hi_val-lo_val)
             n, dn = n - dn, -dn
 
-        print(data)
+        FS = 20
+        TFS = 18
 
-        plt.imshow(data, interpolation='None', aspect='auto', cmap=self.cm)
-        plt.colorbar()
+        YS, XF = 4, 2.2
+        fig = plt.figure(figsize=(XF*YS,YS))
 
+        plt.imshow(data.T, interpolation='None', aspect='auto', cmap=self.cm,
+                        extent=[0, self.T/60, 0, xhi-xlo])
+        cbar = plt.colorbar(ticks=[0,1,2])
+        cbar.set_label('Charges', fontsize=FS)
+        cbar.ax.tick_params(labelsize=TFS)
+
+        DT, DX = self.T/60, xhi-xlo
         ax = plt.gca()
-        ax.set_xticks([])
-        ax.set_yticks([])
+        ax.set_xticks([round(x*DT,1) for x in [0, .5, 1.]])
+        ax.set_yticks([round(x*DX,1) for x in [0, .5, 1.]])
+        plt.xlabel('Time (min)', fontsize=FS)
+        plt.ylabel('x (nm)', fontsize=FS)
+        ax.tick_params(axis='both', which='major', labelsize=TFS)
 
+        fname = self.img_fn
+        direc = os.path.dirname(fname)
+        if not os.path.isdir(direc):
+            os.makedirs(direc)
+
+        plt.savefig(fname, bbox_inches='tight')
         plt.show()
-
 
     def _integrate(self, n, dt):
         '''Integrate the charge of the n^th DB for dt seconds'''
@@ -157,23 +185,6 @@ class Waterfall:
         return charge*norm
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
 
     d1221 = [8,10,15,17]
@@ -185,4 +196,4 @@ if __name__ == '__main__':
     model = HoppingModel(device, model='marcus')
     model.addChannel('bulk')
     waterfall = Waterfall(model)
-    waterfall.generate(nscans=200)
+    waterfall.generate(nscans=800, srate=8.9, pad = 1.6, mu=0.1)

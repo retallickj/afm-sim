@@ -555,7 +555,6 @@ class HoppingAnimator(QGraphicsView):
 
     def cleanup(self):
         #super(HoppingAnimator, self).__del__()
-        print('pings')
         if self.logger:
             self.logger.cleanup()
         self.model.cleanup()
@@ -991,8 +990,9 @@ class HoppingAnimator(QGraphicsView):
         items = self.scene.items(rect)
         if items:
             dist = lambda x: (x.pos()-pos).manhattanLength()
-            cands = filter(lambda x: not isinstance(x, SnapTarget), items)
-            target = min(cands, key = dist)
+            cands =[x for x in items if not (isinstance(x, SnapTarget) or
+                                                isinstance(x, Tracker))]
+            target = min(cands, key = dist) if cands else None
         else:
             target = None
 
@@ -1285,8 +1285,8 @@ if __name__ == '__main__':
     import sys
 
     line = [8, 10, 15, 17]
-    #line.insert(0, line[0]-7)
-    #line.append(line[-1]+7)
+    line.insert(0, line[0]-7)
+    line.append(line[-1]+7)
 
     pair = lambda n: [0, n]
 
@@ -1312,7 +1312,7 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = _or
+    device = line
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
