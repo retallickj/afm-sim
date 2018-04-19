@@ -783,12 +783,11 @@ class HoppingAnimator(QGraphicsView):
             dock.addLayout(hb)
 
 
-    def setPar(self, obj, attr, val, tc=1):
+    def setPar(self, obj, attr, val):
         setattr(obj, attr, val)
-        for _ in range(tc):
-            self.tick()
+        self.tick()
 
-    def setParFunc(self, func, val, tc=1):
+    def setParFunc(self, func, val):
         '''Set a parameter through an accessor function'''
         func(val)
         self.tick()
@@ -881,22 +880,23 @@ class HoppingAnimator(QGraphicsView):
     def tick(self):
         '''Time stepping protocol'''
 
+        # print('\n\n Tick start:'); t = wall()
+
+        # draw last state
+        for i,c in enumerate(self.model.charge):
+            self.dbs[i].setCharge(c)
+
+        if self.tip is not None:
+            self.updateTip()
+
+        if self.clock is not None:
+            self.gradient.updateColors()
+            self.scene.setForegroundBrush(self.gradient)
+
+        self.update()
+
         if not self.paused:
 
-            # print('\n\n Tick start:'); t = wall()
-
-            # draw last state
-            for i,c in enumerate(self.model.charge):
-                self.dbs[i].setCharge(c)
-
-            if self.tip is not None:
-                self.updateTip()
-
-            if self.clock is not None:
-                self.gradient.updateColors()
-                self.scene.setForegroundBrush(self.gradient)
-
-            self.update()
             self.signal_tick.emit()
 
             # log current state
@@ -963,6 +963,32 @@ class HoppingAnimator(QGraphicsView):
 
         self.scale_fact = self.transform().m11()
 
+    def paintClock(self, fname, fwidth):
+        ''''''
+
+        import matplotlib.pyplot as plt
+
+        rect = self.extents()
+        xlo, xhi = rect.left()/_SF, rect.right()/_SF
+
+        xx = np.linspace(xlo, xhi, 2000)
+        yy = self.clock.waveform(xx, self.clock.t)
+
+        fact = 1e-2
+        plt.figure()
+
+        yy = np.tile(yy, (100,1))
+        plt.imshow(yy, cmap=plt.get_cmap('bwr'))
+        ax = plt.gca()
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+        p = list(fname.rpartition('.'))
+        p[0] += '-clock'
+        plt.savefig(''.join(p), bbox_inches='tight')
+
+
+
     def screencapture(self, fname, vector=False, rect=None):
         '''Save a screenshot of the QGraphicsScene and save it to the given
         filename. Set vector to True if output format is SVG'''
@@ -974,8 +1000,6 @@ class HoppingAnimator(QGraphicsView):
         direc = os.path.dirname(fname)
         if not os.path.isdir(direc):
             os.makedirs(direc)
-
-        print(source.size())
 
         if vector:
             # SVG format
@@ -997,7 +1021,6 @@ class HoppingAnimator(QGraphicsView):
         else:
             canvas = QImage(source.size().toSize(), QImage.Format_ARGB32)
 
-        print(canvas.height(), canvas.width())
         painter = QPainter(canvas)
         self.scene.render(painter, target, source)
         painter.end()
@@ -1005,6 +1028,7 @@ class HoppingAnimator(QGraphicsView):
         if not vector:
             canvas.save(fname)
         else:
+            self.paintClock(fname, canvas.width())
             self.unsetCapture()
 
         print('Screenshot saved: {0}'.format(fname))
@@ -1344,7 +1368,7 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = line
+    device = QCA(20)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'

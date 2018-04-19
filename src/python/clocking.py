@@ -80,4 +80,8 @@ class Clock(Channel):
     def waveform(self, x, t):
         '''Travelling wave approximation of clocking fields'''
         phase = 2*np.pi*(x/self.length - self.wf_f*t)
-        return self.wf_0 + self.wf_A*np.sin(phase)
+        return self.wf_0 + self.wf_A*self._sinus(phase)
+
+    def _sinus(self, x):
+        '''periodic function bounded by -1 and 1 with a period of 2*pi'''
+        return np.sin(x)
