@@ -20,6 +20,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtSvg import QSvgGenerator
+from PyQt5.QtPrintSupport import QPrinter
 
 from hopper import HoppingModel
 
@@ -172,6 +173,21 @@ class ClockGradient(QLinearGradient):
 
         c = 2*(f1*np.array(c1.getRgb())+f2*np.array(c2.getRgb()))
         return QColor(*c)
+
+
+class ClockPublish:
+    '''Handler for creating formatted screenshots including the
+    clocking fields for publishing'''
+
+    def __init__(self, fname, clock):
+        '''
+        inputs:
+            fname : name of svg screenshot of
+            clock :
+        '''
+        pass
+
+
 
 
 class DB(QGraphicsEllipseItem):
@@ -959,16 +975,29 @@ class HoppingAnimator(QGraphicsView):
         if not os.path.isdir(direc):
             os.makedirs(direc)
 
+        print(source.size())
+
         if vector:
-            canvas = QSvgGenerator()
-            canvas.setFileName(fname)
-            canvas.setSize(source.size().toSize())
-            canvas.setViewBox(target)
+            # SVG format
+            if os.path.splitext(fname)[1].lower() == '.svg':
+                canvas = QSvgGenerator()
+                canvas.setFileName(fname)
+                canvas.setSize(source.size().toSize())
+                canvas.setViewBox(target)
+            # PDF format
+            else:
+                canvas = QPrinter()
+                canvas.setFullPage(True)
+                canvas.setOutputFileName(fname)
+                canvas.setPageSize(QPageSize(source.size(), QPageSize.Point))
+                # recalibrate, because Qt
+                size = QSizeF(source.width()**2/canvas.width(), source.height()**2/canvas.height())
+                canvas.setPageSize(QPageSize(size, QPageSize.Point))
             self.setCapture()
         else:
             canvas = QImage(source.size().toSize(), QImage.Format_ARGB32)
 
-
+        print(canvas.height(), canvas.width())
         painter = QPainter(canvas)
         self.scene.render(painter, target, source)
         painter.end()
@@ -1162,6 +1191,10 @@ class MainWindow(QMainWindow):
 
     img_dir = os.path.join('.', 'img')  # directory for image saving
 
+    use_svg = False  # use svg for vector graphics else pdf
+    img_ext = { False: '.png',
+                True:  '.svg' if use_svg else '.pdf'}
+
     def __init__(self, model, record=False, fps=30):
         ''' '''
         super(MainWindow, self).__init__()
@@ -1267,10 +1300,9 @@ class MainWindow(QMainWindow):
         elif e.key() == Qt.Key_E:
             self.animator.zoomExtents()
         elif e.key() == Qt.Key_S:
-            vector = e.modifiers() & Qt.ShiftModifier
-            ext = '.svg' if vector else '.png'
-            fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')+ext
-            fname = os.path.join(self.img_dir, fname)
+            vector = bool(e.modifiers() & Qt.ShiftModifier)
+            fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')
+            fname = os.path.join(self.img_dir, fname+self.img_ext[vector])
             self.animator.screencapture(fname, vector)
         elif e.key() == Qt.Key_P:
             self.animator.pause()
