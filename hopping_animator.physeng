@@ -6,7 +6,7 @@
     <bin_path>afmmarcus</bin_path> <!-- path to binary (standalone) or script (read by interpreter), relative to the directory containing this file -->
     <linked_script_path>db-sim-connector.py</linked_script_path> <!-- if the binary above is a connector that calls another script or binary, indicate the script/binary path here, relative to the directory containing this file. -->
     <gui_dialog_path>hopping_animator.ui</gui_dialog_path>
-    <sim_params>
+    <sim_params preserve_order="true">
       <simulation_type>
         <T>string</T>
         <val>animation</val>
