@@ -28,6 +28,8 @@ class Waterfall:
     sig = .8    # 'atom diameter'
 
     lo, hi = 1., 2.     # amplitudes of unoccupied/occupied DBs
+    portrait = True     # portrait style plotting
+    xticks = False
 
     # coloring for plots
     cdict = {'red':    ((0, .48, .48),
@@ -136,25 +138,62 @@ class Waterfall:
             data[m,:] = lo_val + data[m,:]*(hi_val-lo_val)
             n, dn = n - dn, -dn
 
+        self._plot_handler(xlo, xhi, data)
+
+
+
+    def _plot_handler(self, xlo, xhi, data):
+        '''Create the waterfall plot'''
+
+        # formatting options
         FS = 20
         TFS = 18
+        size, asp = 4, 1.9
 
-        YS, XF = 4, 2.2
-        fig = plt.figure(figsize=(XF*YS,YS))
+        if self.portrait:
+            fig, (ax, cax) = plt.subplots(nrows=2, figsize=(size, size*asp),
+                        gridspec_kw={'height_ratios': [1, .02]})
+            dat = data
+            xext, yext = xhi-xlo, self.T/60
+            xlab, tlab = ax.set_xlabel, ax.set_ylabel
+            cor = 'horizontal'
+            ax.xaxis.tick_top()
+            ax.xaxis.set_label_position('top')
+        else:
+            fig, (ax, cax) = plt.subplots(ncols=2, figsize=(size*asp, size),
+                        gridspec_kw={'width_ratios': [1, .05]})
+            dat = data.T
+            xext, yext = self.T/60, xhi-xlo
+            xlab, tlab = ax.set_ylabel, ax.set_xlabel
+            cor = 'vertical'
 
-        plt.imshow(data.T, interpolation='None', aspect='auto', cmap=self.cm,
-                        extent=[0, self.T/60, 0, xhi-xlo])
-        cbar = plt.colorbar(ticks=[0,1,2])
+        im = ax.imshow(dat, interpolation='None', aspect='auto', cmap=self.cm,
+                        extent=[0, xext, 0, yext])
+
+        # ticks
+        tick_fill = lambda f, ext: f([round(x*ext,1) for x in [0, .5, 1.]])
+        if self.xticks:
+            tick_fill(ax.set_xticks, xext)
+            tick_fill(ax.set_yticks, yext)
+            xlab('x (nm)', fontsize=FS)
+            tlab('Time (min)', fontsize=FS)
+        else:
+            if self.portrait:
+                ax.set_xticks([])
+                tick_fill(ax.set_yticks, yext)
+            else:
+                tick_fill(ax.set_xticks, xext)
+                ax.set_yticks([])
+            tlab('Time (min)', fontsize=FS)
+        ax.tick_params(axis='both', which='major', labelsize=TFS)
+
+        # colorbar
+        cbar = fig.colorbar(im, cax=cax, ticks=[0,1,2], orientation=cor)
         cbar.set_label('Charges', fontsize=FS)
         cbar.ax.tick_params(labelsize=TFS)
 
-        DT, DX = self.T/60, xhi-xlo
-        ax = plt.gca()
-        ax.set_xticks([round(x*DT,1) for x in [0, .5, 1.]])
-        ax.set_yticks([round(x*DX,1) for x in [0, .5, 1.]])
-        plt.xlabel('Time (min)', fontsize=FS)
-        plt.ylabel('x (nm)', fontsize=FS)
-        ax.tick_params(axis='both', which='major', labelsize=TFS)
+
+        plt.tight_layout(pad=0, h_pad=0, w_pad=0)
 
         fname = self.img_fn
         direc = os.path.dirname(fname)
@@ -163,6 +202,8 @@ class Waterfall:
 
         plt.savefig(fname, bbox_inches='tight')
         plt.show()
+
+
 
     def _integrate(self, n, dt):
         '''Integrate the charge of the n^th DB for dt seconds'''

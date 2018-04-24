@@ -136,7 +136,7 @@ class MarcusModel(BaseModel):
     '''Marcus Theory model for hopping rates'''
 
     # model-specific parameters
-    lamb    = 0.04      # reorganization energy, eV
+    lamb    = 0.040      # reorganization energy, eV
 
     # transfer integral parameters
     prefact = 1e-5      # prefactor

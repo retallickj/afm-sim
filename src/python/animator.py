@@ -1215,7 +1215,7 @@ class MainWindow(QMainWindow):
 
     img_dir = os.path.join('.', 'img')  # directory for image saving
 
-    use_svg = False  # use svg for vector graphics else pdf
+    use_svg = True  # use svg for vector graphics else pdf
     img_ext = { False: '.png',
                 True:  '.svg' if use_svg else '.pdf'}
 
