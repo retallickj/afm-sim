@@ -24,6 +24,7 @@ class Clock(Channel):
     sdflag = False  # no hopping to/from clocking electrodes
 
     length = 2e3        # clocking signal spacing period, angstroms
+    freq = 1e-1         # clock frequency, Hz
 
     # default waveform parameters
     wf_f    = 1e-1      # waveform frequency, Hz
@@ -50,7 +51,7 @@ class Clock(Channel):
 
     def tick(self):
         ''' '''
-        return self.dp/self.wf_f
+        return self.dp/self.freq
 
     def run(self, dt):
         '''Advance the clocking fields by the given amount'''
@@ -79,7 +80,7 @@ class Clock(Channel):
 
     def waveform(self, x, t):
         '''Travelling wave approximation of clocking fields'''
-        phase = 2*np.pi*(x/self.length - self.wf_f*t)
+        phase = 2*np.pi*(x/self.length - self.freq*t)
         return self.wf_0 + self.wf_A*self._sinus(phase)
 
     def _sinus(self, x):

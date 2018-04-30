@@ -154,7 +154,7 @@ class ClockGradient(QLinearGradient):
         xx = self.clock.length*np.array([0,self.nwaves])
 
         # advance minimum position by current time
-        xx += self.clock.length*self.clock.wf_f*self.clock.t
+        xx += self.clock.length*self.clock.freq*self.clock.t
         if xx[0] > self.clock.length:
             xx -= self.clock.length
 
@@ -173,21 +173,6 @@ class ClockGradient(QLinearGradient):
 
         c = 2*(f1*np.array(c1.getRgb())+f2*np.array(c2.getRgb()))
         return QColor(*c)
-
-
-class ClockPublish:
-    '''Handler for creating formatted screenshots including the
-    clocking fields for publishing'''
-
-    def __init__(self, fname, clock):
-        '''
-        inputs:
-            fname : name of svg screenshot of
-            clock :
-        '''
-        pass
-
-
 
 
 class DB(QGraphicsEllipseItem):
@@ -535,6 +520,8 @@ class HoppingAnimator(QGraphicsView):
     logging = False     # set True for LineView animation
     log_dir = os.path.join('.', '.temp/')
 
+    stopwatch_step = .25    # fraction of clock period to step for stopwatch
+
     zoom_rate = .1
     zoom_bounds = [.01, 5.]
 
@@ -593,6 +580,7 @@ class HoppingAnimator(QGraphicsView):
         self.panx, self.pany = 0., 0.
         self.path = []
 
+        self.stoptime = None
         self.dbn = -1
         self.state = {}
 
@@ -755,8 +743,8 @@ class HoppingAnimator(QGraphicsView):
             dock.addSlider('log(length)', 0, 3, .1, val, func,
                 'Wavelength, in nm')
 
-            val = np.log10(self.clock.wf_f)
-            func = lambda v: self.setPar(self.clock, 'wf_f', 10**v)
+            val = np.log10(self.clock.freq)
+            func = lambda v: self.setPar(self.clock, 'freq', 10**v)
             dock.addSlider('Frequency', -2, 3, .1, val, func,
                 'Frequency, in Hz')
 
@@ -954,6 +942,10 @@ class HoppingAnimator(QGraphicsView):
 
             self.tick_timer.start(min(max(int(millis),mcount), 10000))
 
+            if self.stoptime is not None and self.clock.t >= self.stoptime:
+                self.stoptime = None
+                self.pause()
+
 
     def setCapture(self):
         self.state['bg'] = self.scene.backgroundBrush()
@@ -1023,6 +1015,15 @@ class HoppingAnimator(QGraphicsView):
         p = list(fname.rpartition('.'))
         p[0] += '-clock'
         plt.savefig(''.join(p), bbox_inches='tight')
+
+    def stopwatch(self):
+        '''Automatically pause after '''
+
+        if self.clock is not None:
+            self.stoptime = self.clock.t + self.stopwatch_step/self.clock.freq
+        else:
+            self.stoptime = None
+
 
 
 
@@ -1358,6 +1359,8 @@ class MainWindow(QMainWindow):
             self.animator.scale(zfact, zfact)
         elif e.key() == Qt.Key_D:
             self.debug()
+        elif e.key() == Qt.Key_T:
+            self.animator.stopwatch()
         elif e.key() == Qt.Key_E:
             self.animator.zoomExtents()
         elif e.key() == Qt.Key_S:
