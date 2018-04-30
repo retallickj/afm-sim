@@ -426,6 +426,16 @@ class FieldEdit(QHBoxLayout):
     def __init__(self, parent=None):
         super(FieldEdit, self).__init__(parent)
 
+class FieldToggle(QCheckBox):
+    '''Container for a parameter toggled as a QCheckBox'''
+
+    def __init__(self, txt, func, parent=None):
+        super(FieldToggle, self).__init__(txt, parent)
+
+        f = lambda: func(self.ischecked())
+        self.stateChanged.connect(f)
+
+
 
 class DockWidget(QDockWidget):
     ''' '''
@@ -481,6 +491,23 @@ class DockWidget(QDockWidget):
 
         self.vbox.addLayout(slider)
         return slider
+
+    def addToggle(self, txt, checked, func, ttip=''):
+        '''Add a checkbox controlled parameter to the Dock Widget
+
+        inputs:
+            txt         : Label of the check button
+            checked     : Initial toggle state
+            func        : callback on toggle, takes a bool
+            ttip        : tool tip
+        '''
+
+        toggle = FieldToggle(txt, func)
+        toggle.setChecked(checked)
+        toggle.setToolTip(ttip)
+
+        self.vbox.addWidget(toggle)
+        return toggle
 
     def addWidget(self, widget, stretch=-1):
         self.vbox.addWidget(widget, stretch=stretch)
@@ -719,6 +746,10 @@ class HoppingAnimator(QGraphicsView):
             dock.addSeparator()
             dock.addText('Clocking Field')
 
+            func = self.enableClock
+            dock.addToggle('Enable Clock: ', False, func,
+                'Toggle the clocking field')
+
             val = np.log10(self.clock.length)-1
             func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
             dock.addSlider('log(length)', 0, 3, .1, val, func,
@@ -783,9 +814,10 @@ class HoppingAnimator(QGraphicsView):
             dock.addLayout(hb)
 
 
-    def setPar(self, obj, attr, val):
+    def setPar(self, obj, attr, val, tc=1):
         setattr(obj, attr, val)
-        self.tick()
+        for _ in range(tc):
+            self.tick()
 
     def setParFunc(self, func, val):
         '''Set a parameter through an accessor function'''
@@ -795,6 +827,11 @@ class HoppingAnimator(QGraphicsView):
     def setTipHeight(self, H):
         self.tip.setHeight(H)
         self.tick()
+
+    def enableClock(self, on):
+        '''Enable or disable the clocking field'''
+
+
 
 
     def lineScan(self):
@@ -938,7 +975,7 @@ class HoppingAnimator(QGraphicsView):
                 item.unsetCapture()
 
     def extents(self):
-        '''Get the bounding box for the design ignoring thje H sites'''
+        '''Get the bounding box for the design ignoring the H sites'''
 
         ignore = lambda x: (isinstance(x, DB) and x.bg and not x.charged) or \
                                 isinstance(x, SnapTarget)
@@ -1215,7 +1252,7 @@ class MainWindow(QMainWindow):
 
     img_dir = os.path.join('.', 'img')  # directory for image saving
 
-    use_svg = True  # use svg for vector graphics else pdf
+    use_svg = False  # use svg for vector graphics else pdf
     img_ext = { False: '.png',
                 True:  '.svg' if use_svg else '.pdf'}
 
@@ -1368,7 +1405,25 @@ if __name__ == '__main__':
         # perturbers
         return wire
 
-    device = QCA(20)
+    def inv_wire(N):
+        D = []
+        dx, x = 5, 0
+        for n in range(N):
+            D += [(x,0,1), (x,2,0)]
+            x += dx
+        return D
+
+    def maj():
+        DX, DY = 12, 6
+        _maj = []
+        def add_qca(ar, x0, y0):
+            ar += [(x0,y0,1), (x0+3,y0,1), (x0,y0+2,0), (x0+3,y0+2,0)]
+        for x,y in [(0,0), (-1,0), (0,-1), (0,1), (1,0)]:
+            add_qca(_maj, DX*x, DY*y)
+        return _maj
+
+
+    device = inv_wire(5)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
