@@ -155,11 +155,11 @@ class ClockGradient(QLinearGradient):
 
         # advance minimum position by current time
         xx += self.clock.length*self.clock.freq*self.clock.t
-        if xx[0] > self.clock.length:
+        while xx[0] > self.clock.length:
             xx -= self.clock.length
 
         self.setStart(xx[0]*_SF, 0)
-        self.setFinalStop(xx[1]*_SF, 0)
+        self.setFinalStop(xx[-1]*_SF, 0)
 
     def _interpolate(self,v):
         '''Interpolate the gradient color for a value between 0 and 1'''
@@ -197,16 +197,16 @@ class DB(QGraphicsEllipseItem):
     capture = {
      # DB edge pens
      'pen':     QPen(QColor("black"), .2*_SF),   # DB edge pen
-     'bgpen':   QPen(QColor("gray"), .2*_SF, Qt.DotLine),
+     'bgpen':   QPen(QColor("lightgray"), .2*_SF, Qt.DotLine),
 
      # fill color
      'pfill':   QBrush(QColor("orange")),   # fixed perturber fill
      'fill':    QBrush(Qt.red),             # charged DB fill
-     'nofill':  QBrush(Qt.NoBrush),         # uncharged DB fill
+     'nofill':  QBrush(Qt.white),         # uncharged DB fill
 
      # diameters
-     'dbD':     1.5*D,  # DB diameter
-     'latD':    0.7*D   # lattice dot diameter
+     'dbD':     3*D,  # DB diameter
+     'latD':    1.*D   # lattice dot diameter
     }
 
 
@@ -417,8 +417,14 @@ class FieldToggle(QCheckBox):
     def __init__(self, txt, func, parent=None):
         super(FieldToggle, self).__init__(txt, parent)
 
-        f = lambda: func(self.ischecked())
-        self.stateChanged.connect(f)
+        self.func = func
+        self.stateChanged.connect(self._func)
+        self.setFocusPolicy(Qt.NoFocus)
+
+    def _func(self):
+
+        self.func(self.isChecked())
+
 
 
 
@@ -735,8 +741,12 @@ class HoppingAnimator(QGraphicsView):
             dock.addText('Clocking Field')
 
             func = self.enableClock
-            dock.addToggle('Enable Clock: ', False, func,
+            dock.addToggle('Enable Clock', True, func,
                 'Toggle the clocking field')
+
+            func = lambda b: self.setPar(self.clock, 'flat', b)
+            dock.addToggle('Flat Clock', False, func,
+                'Toggle flat clocking field')
 
             val = np.log10(self.clock.length)-1
             func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
@@ -816,9 +826,13 @@ class HoppingAnimator(QGraphicsView):
         self.tip.setHeight(H)
         self.tick()
 
-    def enableClock(self, on):
+    def enableClock(self, enable):
         '''Enable or disable the clocking field'''
 
+        self.clock.enable(enable)
+        brush = self.gradient if enable else QBrush(Qt.NoBrush)
+        self.scene.setForegroundBrush(brush)
+        self.tick()
 
 
 
@@ -914,7 +928,7 @@ class HoppingAnimator(QGraphicsView):
         if self.tip is not None:
             self.updateTip()
 
-        if self.clock is not None:
+        if self.clock is not None and self.clock.enabled:
             self.gradient.updateColors()
             self.scene.setForegroundBrush(self.gradient)
 
@@ -1023,9 +1037,6 @@ class HoppingAnimator(QGraphicsView):
             self.stoptime = self.clock.t + self.stopwatch_step/self.clock.freq
         else:
             self.stoptime = None
-
-
-
 
     def screencapture(self, fname, vector=False, rect=None):
         '''Save a screenshot of the QGraphicsScene and save it to the given
@@ -1401,7 +1412,7 @@ if __name__ == '__main__':
 
     def wire(N):
         wire = []
-        dx, dp, x = 2, 6, 0
+        dx, dp, x = 2, 9, 0
         for n in range(N):
             wire += [(x,0,0), (x+dx,0,0)]
             x += dp
@@ -1410,9 +1421,9 @@ if __name__ == '__main__':
 
     def inv_wire(N):
         D = []
-        dx, x = 5, 0
+        dx, x = 8, 0
         for n in range(N):
-            D += [(x,0,1), (x,2,0)]
+            D += [(x,0,0), (x,1,1)]
             x += dx
         return D
 
@@ -1426,7 +1437,7 @@ if __name__ == '__main__':
         return _maj
 
 
-    device = inv_wire(5)
+    device = inv_wire(20)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'

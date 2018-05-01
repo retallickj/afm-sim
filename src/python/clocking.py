@@ -25,9 +25,10 @@ class Clock(Channel):
 
     length = 2e3        # clocking signal spacing period, angstroms
     freq = 1e-1         # clock frequency, Hz
+    enabled = True      # toggle the clocking field on/off
+    flat = False
 
     # default waveform parameters
-    wf_f    = 1e-1      # waveform frequency, Hz
     wf_A    = .1        # waveform ampitude, eV
     wf_0    = 0.        # waveform offset, eV
 
@@ -55,9 +56,10 @@ class Clock(Channel):
 
     def run(self, dt):
         '''Advance the clocking fields by the given amount'''
-        super(Clock, self).run(dt)
-        self.t += dt
-        self.bias = self.fgen(self.t)
+        if self.enabled:
+            super(Clock, self).run(dt)
+            self.t += dt
+            self.bias = self.fgen(self.t)
 
     def rates(self):
         return np.zeros(len(self.occ), dtype=float)
@@ -67,6 +69,12 @@ class Clock(Channel):
 
     def update(self, occ, nocc, beff):
         self.occ, self.nocc = occ, nocc
+
+    def enable(self, b):
+        self.enabled = b
+        if not b:
+            self.bias *= 0
+
 
     # internal methods
 
@@ -80,9 +88,11 @@ class Clock(Channel):
 
     def waveform(self, x, t):
         '''Travelling wave approximation of clocking fields'''
+        xx = x/self.length if not self.flat else 0
         phase = 2*np.pi*(x/self.length - self.freq*t)
         return self.wf_0 + self.wf_A*self._sinus(phase)
 
     def _sinus(self, x):
         '''periodic function bounded by -1 and 1 with a period of 2*pi'''
-        return np.sin(x)
+        b = 0
+        return np.sqrt((1+b*b)/(1+(b*np.sin(x))**2))*np.sin(x)
