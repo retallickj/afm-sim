@@ -1,7 +1,7 @@
 # afm-sim
 AFM simulation of SiDB structures.
 
-# Hopping Model Animaator
+# Hopping Model Animator
 
 ## Keyboard shortcuts:
 Key | Behaviour
@@ -9,6 +9,7 @@ Key | Behaviour
 **Q** | Close the animator (and compile the recording if enabled)
 **O** | Open the options panel
 **P** | Pause animation
+**T** | When clocking, start a timer which automatically pauses the animation after a quarter phase.
 **S** | Timestamped .png screenshot of display window (no sidepanel) to local directory
 **Shift + S** | Timestamped .svg screenshot of display window with capture presets.
 **Space** | Advance the simulation one hop

@@ -23,7 +23,15 @@ class Viewer:
 
     LW = 2
 
-    wellfunc = lambda self, x: .32-.6*np.exp(-.5*np.abs(x)**3)
+    # Poschl-Teller Parameters
+    pt_0 = 3.81    # Poschl-Teller prefactor, eV.angstrom^2
+    pt_alpha = 2.4  # well width, angstroms
+    pt_lamb = 1.5   # well depth control
+
+    pt_0 *= pt_lamb*(pt_lamb-1)/pt_alpha**2
+
+    #wellfunc = lambda self, x: .32-.6*np.exp(-.5*np.abs(x)**3)
+    wellfunc = lambda self, x: .16 - self.pt_0/np.cosh(x/self.pt_alpha)**2
 
 
     def __init__(self, start_file):
@@ -145,7 +153,7 @@ class Viewer:
             self.handles['db'].append(h)
             self.hlist += h.values()
 
-        self.dbx = np.linspace(-5,5,50)
+        self.dbx = np.linspace(-8,8,50)
         self.dby = self.wellfunc(self.dbx)
 
         self.setup_check=True

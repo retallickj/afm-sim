@@ -83,13 +83,11 @@ class Logger(object):
             json.dump(data, fp, indent=1)
 
         # keep trying to remove file if it exists
-        while True:
-            if os.path.exists(self.log_fn):
-                try:
-                    os.remove(self.log_fn)
-                    break
-                except:
-                    pass
+        while os.path.exists(self.log_fn):
+            try:
+                os.remove(self.log_fn)
+            except:
+                pass
 
         os.rename(self.temp_fn, self.log_fn)
 
@@ -523,7 +521,7 @@ class HoppingAnimator(QGraphicsView):
     bgcol = QColor(29, 35, 56)  # background color
     record_dir = os.path.join('.', '.temp_rec/')
 
-    logging = False     # set True for LineView animation
+    logging = True     # set True for LineView animation
     log_dir = os.path.join('.', '.temp/')
 
     stopwatch_step = .25    # fraction of clock period to step for stopwatch
@@ -719,7 +717,7 @@ class HoppingAnimator(QGraphicsView):
             dock.addSlider('H', 100, 1000, 10, val, func,
                 'Tip height in pm')
 
-            val = self.tip.tipR1key
+            val = self.tip.tipR1
             func = lambda R: self.setParFunc(
                         lambda r: self.tip.setRadius(icibb=r), R)
             dock.addSlider('ICIBB R', 1, 50, 1, val, func,
@@ -1092,8 +1090,7 @@ class HoppingAnimator(QGraphicsView):
         items = self.scene.items(rect)
         if items:
             dist = lambda x: (x.pos()-pos).manhattanLength()
-            cands =[x for x in items if not (isinstance(x, SnapTarget) or
-                                                isinstance(x, Tracker))]
+            cands =[x for x in items if isinstance(x, DB)]
             target = min(cands, key = dist) if cands else None
         else:
             target = None
@@ -1437,7 +1434,7 @@ if __name__ == '__main__':
         return _maj
 
 
-    device = inv_wire(20)
+    device = line
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
@@ -1445,8 +1442,8 @@ if __name__ == '__main__':
 
     model = HoppingModel(device, model='marcus')
     model.addChannel('bulk')
-    model.addChannel('clock')
-    #model.addChannel('tip')
+    #model.addChannel('clock')
+    model.addChannel('tip')
     #model.fixElectronCount(3)
 
     app = QApplication(sys.argv)
