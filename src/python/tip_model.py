@@ -85,12 +85,12 @@ class TipModel(Channel):
 
     def tick(self):
         '''Time until the tip position/state changes'''
-        return self.dt if self.path else np.inf
+        return self.dt if self.path and self.enabled else np.inf
 
     def run(self, dt):
         '''Advance the tip by the given amount of time'''
         super(TipModel, self).run(dt)
-        while dt > 0 and self.path:
+        while dt > 0 and self.path and self.enabled:
             # advance doesn't reach next target
             if dt<self.rt:
                 self.setPos(self.tipX+dt*self.rx, self.tipY+dt*self.ry)
@@ -108,7 +108,7 @@ class TipModel(Channel):
 
 
     def biases(self, occ):
-        return self.level_shifts(occ)
+        return self.level_shifts(occ) if self.enabled else np.zeros(len(self.X))
 
     def update(self, occ, nocc, beff):
         self.occ, self.nocc = occ, nocc

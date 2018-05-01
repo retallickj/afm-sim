@@ -27,6 +27,7 @@ class Channel(object):
     # flags
     active = False      # set True if the channel induces a bias that is state
                         # dependent
+    enabled = True      # include channel in simulation
 
     sdflag = True       # set True if the channel is a charge source/drain
 
@@ -44,20 +45,27 @@ class Channel(object):
         self.lifetime = self.rebirth() if self.sdflag else np.inf
         self.tickrate = 1.
 
+    def toggle(self):
+        '''Toggle whether the channel is included in the simulation'''
+        self.enabled = not self.enabled
+
+    def setEnabled(self, enable):
+        self.enabled = bool(enable)
+
     def tick(self):
         '''Time until channel state changes'''
         return np.inf
 
     def peek(self):
         '''Time until next charge hops onto the surface'''
-        if self.sdflag:
+        if self.sdflag and self.enabled:
             return self.lifetime/(self.tickrate+self.MTR)
         else:
             return np.inf
 
     def run(self, dt):
         '''Advance the channel lifetime by the given amount'''
-        if self.sdflag:
+        if self.sdflag and self.enabled:
             self.lifetime -= dt*self.tickrate
 
     def pop(self):
@@ -71,7 +79,7 @@ class Channel(object):
 
     def rates(self):
         '''Get the hopping rates onto the channel for the given occupied DBs'''
-        return self.onrates
+        return self.onrates if self.enabled else np.zeros(len(self.occ))
 
     def biases(self, occ):
         '''Get the induced local potentials for each DB as a result of the

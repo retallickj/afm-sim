@@ -64,16 +64,18 @@ class Logger(object):
         self.view, self.viewing = view, False
         self.P = None
 
-    def cleanup(self):
+    def cleanup(self, silent=False):
 
-        print('Logger being closed')
+        if not silent:
+            print('Logger being closed')
 
         # close viewer log if open
         if hasattr(self, 'view_fp'):
             self.view_fp.close()
+        self.viewing = False
 
         # close the Viewer process if open
-        if self.P is None:
+        if self.P is not None:
             self.P.terminate()
 
     def log(self, data):
@@ -91,12 +93,13 @@ class Logger(object):
 
         os.rename(self.temp_fn, self.log_fn)
 
-        if self.view and not self.viewing:
-            self.startViewer()
+        # if self.view and not self.viewing:
+        #     self.startViewer()
 
     def startViewer(self):
         ''' '''
         print('Starting Viewer')
+        self.cleanup(silent=False)
         self.viewing = True
         self.view_fp = open(os.path.join(self.root, 'stdout'), 'a')
         self.P = Popen(['python3', 'lineview.py', self.log_fn],
@@ -689,6 +692,10 @@ class HoppingAnimator(QGraphicsView):
             dock.addSeparator()
             dock.addText('Tip properties')
 
+            func = self.enableTip
+            dock.addToggle('Enable tip:', True, func,
+                'Toggle the tip')
+
             val, func = self.tip.scale, lambda v: self.setPar(self.tip, 'scale', v)
             dock.addSlider('scale', 0., 1., .01, val, func,
                 'Attenuation for tip contribution to the energy calculation')
@@ -769,6 +776,11 @@ class HoppingAnimator(QGraphicsView):
             dock.addSeparator()
             dock.addText('Animation controls')
 
+            if self.logger is not None:
+                func = self.enableLineView
+                dock.addToggle('Viewer', False, func,
+                    'Toggle the lineview')
+
             val = np.log10(self.rate)
             func = lambda v: self.setPar(self, 'rate', 10**v, tc=2)
             dock.addSlider('log(rate)', -3., 3., .5, val, func,
@@ -827,11 +839,24 @@ class HoppingAnimator(QGraphicsView):
     def enableClock(self, enable):
         '''Enable or disable the clocking field'''
 
-        self.clock.enable(enable)
+        self.clock.setEnabled(enable)
         brush = self.gradient if enable else QBrush(Qt.NoBrush)
         self.scene.setForegroundBrush(brush)
         self.tick()
 
+    def enableTip(self, enable):
+        '''Enable or disable the tip'''
+
+        self.tip.setEnabled(enable)
+        self.tip_item.setVisible(enable)
+
+    def enableLineView(self, enable):
+        '''Enable or Disable the line view'''
+
+        if enable:
+            self.logger.startViewer()
+        else:
+            self.logger.cleanup()
 
 
     def lineScan(self):
@@ -1442,7 +1467,7 @@ if __name__ == '__main__':
 
     model = HoppingModel(device, model='marcus')
     model.addChannel('bulk')
-    #model.addChannel('clock')
+    model.addChannel('clock')
     model.addChannel('tip')
     #model.fixElectronCount(3)
 

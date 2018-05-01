@@ -25,7 +25,7 @@ class Clock(Channel):
 
     length = 2e3        # clocking signal spacing period, angstroms
     freq = 1e-1         # clock frequency, Hz
-    enabled = True      # toggle the clocking field on/off
+
     flat = False
 
     # default waveform parameters
@@ -65,16 +65,10 @@ class Clock(Channel):
         return np.zeros(len(self.occ), dtype=float)
 
     def biases(self, occ):
-        return self.bias
+        return self.bias if self.enabled else np.zeros(len(self.occ))
 
     def update(self, occ, nocc, beff):
         self.occ, self.nocc = occ, nocc
-
-    def enable(self, b):
-        self.enabled = b
-        if not b:
-            self.bias *= 0
-
 
     # internal methods
 

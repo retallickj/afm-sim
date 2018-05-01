@@ -242,7 +242,7 @@ class HoppingModel:
 
         beff = self.bias - np.sum(self.V[:,occ], axis=1)
         if wch:
-            beff += sum(ch.scale*ch.biases(occ) for ch in self.channels)
+            beff += sum(ch.scale*ch.biases(occ) for ch in self.channels if ch.enabled)
         return beff
 
 
@@ -258,7 +258,7 @@ class HoppingModel:
         beff = self.bias-np.dot(self.V, self.charge)
 
         # add channel biases to beff
-        beff += sum(ch.scale*ch.biases(occ) for ch in self.channels)
+        beff += sum(ch.scale*ch.biases(occ) for ch in self.channels if ch.enabled)
         for channel in self.channels:
             channel.update(occ, nocc, beff)
 
@@ -272,7 +272,7 @@ class HoppingModel:
                 if not self.charge[trg]:
                     self.dG[src][trg] = tbeff[src]-tbeff[trg]
                     self.dG[src][trg] += sum(ch.scale*ch.computeDelta(src, trg)
-                                                for ch in self.channels)
+                                for ch in self.channels if ch.enabled)
 
         # single charge hopping rates
         self.trates = defaultdict(dict)
@@ -339,8 +339,8 @@ class HoppingModel:
 
         # optional channel hopping
         if self.channels and not self.fixed_pop:
-            chan_times = ([('chan', i),t] for i,t in enumerate(
-                                ch.peek() for ch in self.channels))
+            chan_times = ([('chan', i),ch.peek()] for i,ch in enumerate(
+                            self.channels) if ch.enabled)
             times.append(chan_times)
 
         (T, ind), dt = min(chain(*times), key=lambda x:x[1])
@@ -378,7 +378,7 @@ class HoppingModel:
 
         # figure out the time step
         dt_hop, T, ind = self.peek()   # hopping events
-        dt_ch = min(ch.tick() for ch in self.channels)
+        dt_ch = min(ch.tick() for ch in self.channels if ch.enabled)
 
         # advance lifetimes and channel states
         tick = max(min(dt, dt_hop, dt_ch), self.MTR)
@@ -427,7 +427,7 @@ class HoppingModel:
 
         inds = self.state[:self.Nel] if occ is None else occ
         beff = self.bias - .5*np.sum(self.V[:,inds], axis=1)
-        beff += sum(ch.scale*ch.biases(inds) for ch in self.channels)
+        beff += sum(ch.scale*ch.biases(inds) for ch in self.channels if ch.enabled)
         return -np.sum(beff[inds])
 
 
@@ -525,7 +525,8 @@ class HoppingModel:
         self.lifetimes[self.state[:self.Nel]] -= dt*self.tickrates
         if self.channels:
             for channel in self.channels:
-                channel.run(dt)
+                if channel.enabled:
+                    channel.run(dt)
         if self.enable_cohop:
             for ij, tickrate in self.ch_tickrates.items():
                 self.ch_lifetimes[ij] -= dt*tickrate
