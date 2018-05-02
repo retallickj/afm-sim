@@ -698,6 +698,13 @@ class HoppingAnimator(QGraphicsView):
             self.logger.cleanup()
         self.model.cleanup()
 
+    def start(self):
+        for thread in self.threads:
+            thread.start()
+
+        self.zoomExtents()
+        self.update()
+
     def _initGUI(self):
         '''Initialise the animator window'''
 
@@ -1388,6 +1395,22 @@ class MainWindow(QMainWindow):
     img_ext = { False: '.png',
                 True:  '.svg' if use_svg else '.pdf'}
 
+    key_map = {
+        'quit': Qt.Key_Q,
+        'options': Qt.Key_O,
+        'tick': Qt.Key_Space,
+        'zoom+': [Qt.Key_Plus, Qt.Key_Equal],
+        'zoom-': Qt.Key_Minus,
+        'debug': Qt.Key_D,
+        'stopwatch': Qt.Key_T,
+        'extents': Qt.Key_E,
+        'screenshot': Qt.Key_S,
+        'pause': Qt.Key_P,
+        'linescan': Qt.Key_L
+    }
+
+    key_check = lambda self, k1, k2: k1 in k2 if hasattr(k2, '__iter__') else k1 == k2
+
     def __init__(self, model, record=False, fps=30):
         ''' '''
         super(MainWindow, self).__init__()
@@ -1405,8 +1428,7 @@ class MainWindow(QMainWindow):
         self.initGUI()
         self.createDock()
 
-        for thread in self.animator.threads:
-            thread.start()
+        self.animator.start()
 
     def initGUI(self):
         ''' '''
@@ -1473,35 +1495,38 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, e):
 
-        if e.key() == Qt.Key_Q:
+        ekey = e.key()
+        key_check = lambda s: self.key_check(ekey, self.key_map[s])
+
+        if key_check('quit'):
             if self.record:
                 self.animator.compile()
             self.animator.cleanup()
             self.close()
-        elif e.key() == Qt.Key_O:
+        elif key_check('options'):
             self.dock.setVisible(not self.dock.isVisible())
-        elif e.key() == Qt.Key_Space:
+        elif key_check('tick'):
             self.animator.tick()
-        elif e.key() in [Qt.Key_Plus, Qt.Key_Equal]:
+        elif key_check('zoom+'):
             zfact = 1+self.animator.zoom_rate
             self.animator.scale(zfact, zfact)
-        elif e.key() == Qt.Key_Minus:
+        elif key_check('zoom-'):
             zfact = 1-self.animator.zoom_rate
             self.animator.scale(zfact, zfact)
-        elif e.key() == Qt.Key_D:
+        elif key_check('debug'):
             self.debug()
-        elif e.key() == Qt.Key_T:
+        elif key_check('stopwatch'):
             self.animator.stopwatch()
-        elif e.key() == Qt.Key_E:
+        elif key_check('extents'):
             self.animator.zoomExtents()
-        elif e.key() == Qt.Key_S:
+        elif key_check('screenshot'):
             vector = bool(e.modifiers() & Qt.ShiftModifier)
             fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')
             fname = os.path.join(self.img_dir, fname+self.img_ext[vector])
             self.animator.screencapture(fname, vector)
-        elif e.key() == Qt.Key_P:
+        elif key_check('pause'):
             self.animator.pause()
-        elif e.key() == Qt.Key_L:
+        elif key_check('linescan'):
             self.animator.lineScan()
 
 
