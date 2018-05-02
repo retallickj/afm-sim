@@ -28,6 +28,7 @@ from timeit import default_timer as wall
 
 
 _SF = 50     # scale factor
+_hmin = 25
 
 
 class Thread(QThread):
@@ -375,10 +376,12 @@ class FieldSlider(QHBoxLayout):
         self.slider.setTickInterval(1)
         self.slider.valueChanged.connect(self.valueChanged)
         self.slider.sliderReleased.connect(self.sliderReleased)
+        self.slider.installEventFilter(self)
 
         self.addWidget(self.txt, stretch=4)
         self.addWidget(self.slider, stretch=40)
         self.addWidget(self.out, stretch=4)
+        self.addStrut(_hmin)
 
     def setBounds(self, lo, hi, inc, val):
 
@@ -405,15 +408,23 @@ class FieldSlider(QHBoxLayout):
     def sliderReleased(self):
         self.func(self.val)
 
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Wheel:
+            return True
+        return QWidget.eventFilter(self, obj, event)
+
+
 
 class FieldEdit(QHBoxLayout):
     '''Container for parameter selected by a QLineEdit'''
 
     def __init__(self, parent=None):
         super(FieldEdit, self).__init__(parent)
+        self.addStrut(_hmin)
 
 class FieldToggle(QCheckBox):
     '''Container for a parameter toggled as a QCheckBox'''
+
 
     def __init__(self, txt, func, parent=None):
         super(FieldToggle, self).__init__(txt, parent)
@@ -421,10 +432,65 @@ class FieldToggle(QCheckBox):
         self.func = func
         self.stateChanged.connect(self._func)
         self.setFocusPolicy(Qt.NoFocus)
+        self.setMinimumHeight(_hmin)
 
     def _func(self):
 
         self.func(self.isChecked())
+
+
+
+class PanelTag(QLabel):
+
+    hmin = 30
+    signal_click = pyqtSignal()
+
+    css = { 'enter': 'gray',
+            'leave': 'lightgray'}
+
+    def __init__(self, txt):
+        super(PanelTag, self).__init__(txt)
+        self.setStyleSheet('background-color:{0}'.format(self.css['leave']))
+        self.setMinimumHeight(self.hmin)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self.signal_click.emit()
+
+    def enterEvent(self, e):
+        self.setStyleSheet('background-color:{0}'.format(self.css['enter']))
+
+    def leaveEvent(self, e):
+        self.setStyleSheet('background-color:{0}'.format(self.css['leave']))
+
+
+class Panel(QVBoxLayout):
+    ''' '''
+
+    def __init__(self, txt, toggled=False, parent=None):
+        super(Panel, self).__init__()
+
+        self.txt = PanelTag('  '+txt)
+        self.box = QWidget()
+        self.vbox = QVBoxLayout()
+        self.box.setLayout(self.vbox)
+
+        self.setAlignment(Qt.AlignTop)
+        self.addWidget(self.txt)
+        self.addWidget(self.box)
+
+        self.txt.signal_click.connect(self.toggle)
+        self.toggled = not toggled  # inverted on first call
+
+
+    def toggle(self):
+        '''Collapse/Expand the Panel'''
+
+        self.toggled = not self.toggled
+        self.box.setVisible(self.toggled)
+
+
+
 
 
 
@@ -444,12 +510,44 @@ class DockWidget(QDockWidget):
         self.setMinimumWidth(self.WIDTH)
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
 
-        widget = QWidget(self)
+        scroll, widget = QScrollArea(), QWidget()
         self.vbox = QVBoxLayout(widget)
         self.vbox.setAlignment(Qt.AlignTop)
-        self.setWidget(widget)
+        scroll.setWidget(widget)
+        scroll.setWidgetResizable(True)
+        self.setWidget(scroll)
+
+        self.panels = {}
+        self.target = self.vbox
 
         self.hide()
+
+    def addPanel(self, key, txt):
+        '''Add a new sub-panel for the dock
+
+        inputs:
+            key     : hashable key for the panel
+            txt     : text to show at panel head
+        '''
+
+        if key in self.panels:
+            raise KeyError('Panel key already exists')
+
+        self.panels[key] = Panel(txt)
+        self.addSeparator()
+        self.vbox.addLayout(self.panels[key])
+        self.target = self.panels[key].vbox
+
+    def setPanel(self, key):
+        '''Change the target panel'''
+        if key in self.panels:
+            self.target = self.panels[key].vbox
+        else:
+            self.target = self.vbox
+
+    def initPanels(self):
+        for key, panel in self.panels.items():
+            panel.toggle()
 
     def addSeparator(self):
         '''Add a horizonal separator line to the dock layout'''
@@ -463,7 +561,7 @@ class DockWidget(QDockWidget):
         '''Add a line of text to the dock'''
 
         label = QLabel(txt)
-        self.vbox.addWidget(label)
+        self.target.addWidget(label)
 
     def addSlider(self, txt, lo, hi, inc, val, func, ttip=''):
         '''Add a slider controlled parameter to the Dock Widget
@@ -481,7 +579,7 @@ class DockWidget(QDockWidget):
         slider.setToolTip(ttip)
         slider.func = func
 
-        self.vbox.addLayout(slider)
+        self.target.addLayout(slider)
         return slider
 
     def addToggle(self, txt, checked, func, ttip=''):
@@ -498,14 +596,14 @@ class DockWidget(QDockWidget):
         toggle.setChecked(checked)
         toggle.setToolTip(ttip)
 
-        self.vbox.addWidget(toggle)
+        self.target.addWidget(toggle)
         return toggle
 
     def addWidget(self, widget, stretch=-1):
-        self.vbox.addWidget(widget, stretch=stretch)
+        self.target.addWidget(widget, stretch=stretch)
 
     def addLayout(self, layout, stretch=-1):
-        self.vbox.addLayout(layout, stretch=stretch)
+        self.target.addLayout(layout, stretch=stretch)
 
 
 
@@ -635,10 +733,22 @@ class HoppingAnimator(QGraphicsView):
     def passControls(self, dock):
         '''Add control fields to the given DockWidget'''
 
-        # hopping controls
 
-        dock.addSeparator()
-        dock.addText('Hopping Model:')
+        # animation controls
+        dock.addPanel('anim', 'Animation controls:')
+
+        if self.logger is not None:
+            func = self.enableLineView
+            dock.addToggle('Viewer', False, func,
+                'Toggle the lineview')
+
+        val = np.log10(self.rate)
+        func = lambda v: self.setPar(self, 'rate', 10**v, tc=2)
+        dock.addSlider('log(rate)', -3., 3., .5, val, func,
+            'Speed-up factor for the animation.')
+
+        # hopping controls
+        dock.addPanel('hopper', 'Hopping Model:')
 
         if self.model.fixed_pop:
             val = self.model.Nel
@@ -669,10 +779,12 @@ class HoppingAnimator(QGraphicsView):
         dock.addSlider('ktf', 1., 100., .1, val, func,
             'Thermal broadening factor, multiplier for thermal energy')
 
+
         # bulk controls
         if self.bulk is not None:
-            dock.addSeparator()
-            dock.addText('Bulk properties')
+            # dock.addSeparator()
+            # dock.addText('Bulk properties')
+            dock.addPanel('bulk', 'Bulk properties: ')
 
             val, func = self.bulk.lamb, lambda v: self.setPar(self.bulk, 'lamb', v)
             dock.addSlider('lambda', .01, .4, .005, val, func,
@@ -689,8 +801,7 @@ class HoppingAnimator(QGraphicsView):
 
         # tip controls
         if self.tip is not None:
-            dock.addSeparator()
-            dock.addText('Tip properties')
+            dock.addPanel('tip', 'Tip properties:')
 
             func = self.enableTip
             dock.addToggle('Enable tip:', True, func,
@@ -740,57 +851,10 @@ class HoppingAnimator(QGraphicsView):
             dock.addSlider('rate', 1., 50., .5, val, func,
                 'Tip scan rate in nm/s')
 
-        if self.clock is not None:
-
-            dock.addSeparator()
-            dock.addText('Clocking Field')
-
-            func = self.enableClock
-            dock.addToggle('Enable Clock', True, func,
-                'Toggle the clocking field')
-
-            func = lambda b: self.setPar(self.clock, 'flat', b)
-            dock.addToggle('Flat Clock', False, func,
-                'Toggle flat clocking field')
-
-            val = np.log10(self.clock.length)-1
-            func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
-            dock.addSlider('log(length)', 0, 3, .1, val, func,
-                'Wavelength, in nm')
-
-            val = np.log10(self.clock.freq)
-            func = lambda v: self.setPar(self.clock, 'freq', 10**v)
-            dock.addSlider('Frequency', -2, 3, .1, val, func,
-                'Frequency, in Hz')
-
-            val, func = self.clock.wf_A, lambda v: self.setPar(self.clock, 'wf_A', v)
-            dock.addSlider('Amplitude', 0, .5, .01, val, func,
-                'Amplitude, in eV')
-
-            val, func = self.clock.wf_0, lambda v: self.setPar(self.clock, 'wf_0', v)
-            dock.addSlider('Offset', -.2, .2, .01, val, func,
-                'Offset, in eV')
-
-        # animator controls
-        if True:
-            dock.addSeparator()
-            dock.addText('Animation controls')
-
-            if self.logger is not None:
-                func = self.enableLineView
-                dock.addToggle('Viewer', False, func,
-                    'Toggle the lineview')
-
-            val = np.log10(self.rate)
-            func = lambda v: self.setPar(self, 'rate', 10**v, tc=2)
-            dock.addSlider('log(rate)', -3., 3., .5, val, func,
-                'Speed-up factor for the animation.')
-
         # functionality
         if self.tip is not None:
 
-            dock.addSeparator()
-            dock.addText('Tip Programs:')
+            dock.addPanel('programs', 'Tip programs:')
 
             self.pad_edit = QLineEdit('2')
             self.pad_edit.setToolTip('Padding size, in angstroms')
@@ -821,6 +885,37 @@ class HoppingAnimator(QGraphicsView):
                 'Full 2D scan with the given number of lines'), stretch=1)
             dock.addLayout(hb)
 
+        if self.clock is not None:
+
+            dock.addPanel('clock', 'Clocking Field:')
+
+            func = self.enableClock
+            dock.addToggle('Enable Clock', True, func,
+                'Toggle the clocking field')
+
+            func = lambda b: self.setPar(self.clock, 'flat', b)
+            dock.addToggle('Flat Clock', False, func,
+                'Toggle flat clocking field')
+
+            val = np.log10(self.clock.length)-1
+            func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
+            dock.addSlider('log(length)', 0, 3, .1, val, func,
+                'Wavelength, in nm')
+
+            val = np.log10(self.clock.freq)
+            func = lambda v: self.setPar(self.clock, 'freq', 10**v)
+            dock.addSlider('Frequency', -2, 3, .1, val, func,
+                'Frequency, in Hz')
+
+            val, func = self.clock.wf_A, lambda v: self.setPar(self.clock, 'wf_A', v)
+            dock.addSlider('Amplitude', 0, .5, .01, val, func,
+                'Amplitude, in eV')
+
+            val, func = self.clock.wf_0, lambda v: self.setPar(self.clock, 'wf_0', v)
+            dock.addSlider('Offset', -.2, .2, .01, val, func,
+                'Offset, in eV')
+
+        dock.initPanels()
 
     def setPar(self, obj, attr, val, tc=1):
         setattr(obj, attr, val)
