@@ -378,9 +378,12 @@ class FieldSlider(QHBoxLayout):
         self.slider.sliderReleased.connect(self.sliderReleased)
         self.slider.installEventFilter(self)
 
-        self.addWidget(self.txt, stretch=4)
+        self.txt.setMaximumWidth(70)
+        self.out.setMaximumWidth(70)
+
+        self.addWidget(self.txt, stretch=8)
         self.addWidget(self.slider, stretch=40)
-        self.addWidget(self.out, stretch=4)
+        self.addWidget(self.out, stretch=8)
         self.addStrut(_hmin)
 
     def setBounds(self, lo, hi, inc, val):
