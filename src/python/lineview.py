@@ -92,17 +92,21 @@ class Viewer:
         if 'tip' in self.handles:
             tip, dtip = self.handles['tip'], data['tip']
 
+            vis = dtip['enabled']
             tip['C1'].width = 2*dtip['R1']
             tip['C1'].height = tip['C1'].width/self.ratio
             x, h = dtip['x'], .5*tip['C1'].height+dtip['H']/self.ratio
             tip['C1'].center = (x, h)
+            tip['C1'].set_visible(vis)
 
             tip['C2'].width = 2*dtip['R2']
             tip['C2'].height = tip['C2'].width/self.ratio
             x, h = dtip['x'], .5*tip['C2'].height+dtip['H']/self.ratio
             tip['C2'].center = (x, h)
+            tip['C2'].set_visible(vis)
 
             tip['apex'].set_data([x,x], [0,1])
+            tip['apex'].set_visible(vis)
 
 
     def _setup(self, data):

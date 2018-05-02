@@ -1144,8 +1144,8 @@ class HoppingAnimator(QGraphicsView):
                     'y': 10*self.tip.tipY,
                     'R1': 10*self.tip.tipR1,
                     'R2': 10*self.tip.tipR2,
-                    'H': 10*self.tip.tipH}
-
+                    'H': 10*self.tip.tipH,
+                    'enabled': self.tip.enabled}
             out['tip'] = tipd
 
         # tracker information
