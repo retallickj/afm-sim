@@ -1446,7 +1446,8 @@ class MainWindow(QMainWindow):
     def initGUI(self):
         ''' '''
 
-        self.setStyleSheet(loadQSS(os.path.join('.', 'stylesheets', 'animator.qss')))
+        self.setStyleSheet(loadQSS(os.path.join(os.path.dirname(__file__),
+                                        'stylesheets', 'animator.qss')))
 
         self.setGeometry(100, 100, self.WINX, self.WINY)
         self.setCentralWidget(self.animator)
