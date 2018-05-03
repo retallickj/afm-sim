@@ -28,7 +28,14 @@ from timeit import default_timer as wall
 
 
 _SF = 50     # scale factor
+_hmin = 25
 
+
+def loadQSS(fname):
+    with open(fname, 'r') as fp:
+        s = fp.read()
+    print(s)
+    return s
 
 class Thread(QThread):
     def __init__(self, func):
@@ -375,10 +382,15 @@ class FieldSlider(QHBoxLayout):
         self.slider.setTickInterval(1)
         self.slider.valueChanged.connect(self.valueChanged)
         self.slider.sliderReleased.connect(self.sliderReleased)
+        self.slider.installEventFilter(self)
 
-        self.addWidget(self.txt, stretch=4)
+        self.txt.setMaximumWidth(70)
+        self.out.setMaximumWidth(70)
+
+        self.addWidget(self.txt, stretch=8)
         self.addWidget(self.slider, stretch=40)
-        self.addWidget(self.out, stretch=4)
+        self.addWidget(self.out, stretch=8)
+        self.addStrut(_hmin)
 
     def setBounds(self, lo, hi, inc, val):
 
@@ -405,15 +417,23 @@ class FieldSlider(QHBoxLayout):
     def sliderReleased(self):
         self.func(self.val)
 
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Wheel:
+            return True
+        return QWidget.eventFilter(self, obj, event)
+
+
 
 class FieldEdit(QHBoxLayout):
     '''Container for parameter selected by a QLineEdit'''
 
     def __init__(self, parent=None):
         super(FieldEdit, self).__init__(parent)
+        self.addStrut(_hmin)
 
 class FieldToggle(QCheckBox):
     '''Container for a parameter toggled as a QCheckBox'''
+
 
     def __init__(self, txt, func, parent=None):
         super(FieldToggle, self).__init__(txt, parent)
@@ -421,10 +441,65 @@ class FieldToggle(QCheckBox):
         self.func = func
         self.stateChanged.connect(self._func)
         self.setFocusPolicy(Qt.NoFocus)
+        self.setMinimumHeight(_hmin)
 
     def _func(self):
 
         self.func(self.isChecked())
+
+
+
+class PanelTag(QLabel):
+
+    hmin = 30
+    signal_click = pyqtSignal()
+
+    css = { 'enter': 'gray',
+            'leave': 'lightgray'}
+
+    def __init__(self, txt):
+        super(PanelTag, self).__init__(txt)
+        self.setStyleSheet('background-color:{0}'.format(self.css['leave']))
+        self.setMinimumHeight(self.hmin)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self.signal_click.emit()
+
+    def enterEvent(self, e):
+        self.setStyleSheet('background-color:{0}'.format(self.css['enter']))
+
+    def leaveEvent(self, e):
+        self.setStyleSheet('background-color:{0}'.format(self.css['leave']))
+
+
+class Panel(QVBoxLayout):
+    ''' '''
+
+    def __init__(self, txt, toggled=False, parent=None):
+        super(Panel, self).__init__()
+
+        self.txt = PanelTag('  '+txt)
+        self.box = QWidget()
+        self.vbox = QVBoxLayout()
+        self.box.setLayout(self.vbox)
+
+        self.setAlignment(Qt.AlignTop)
+        self.addWidget(self.txt)
+        self.addWidget(self.box)
+
+        self.txt.signal_click.connect(self.toggle)
+        self.toggled = not toggled  # inverted on first call
+
+
+    def toggle(self):
+        '''Collapse/Expand the Panel'''
+
+        self.toggled = not self.toggled
+        self.box.setVisible(self.toggled)
+
+
+
 
 
 
@@ -444,12 +519,44 @@ class DockWidget(QDockWidget):
         self.setMinimumWidth(self.WIDTH)
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
 
-        widget = QWidget(self)
+        scroll, widget = QScrollArea(), QWidget()
         self.vbox = QVBoxLayout(widget)
         self.vbox.setAlignment(Qt.AlignTop)
-        self.setWidget(widget)
+        scroll.setWidget(widget)
+        scroll.setWidgetResizable(True)
+        self.setWidget(scroll)
+
+        self.panels = {}
+        self.target = self.vbox
 
         self.hide()
+
+    def addPanel(self, key, txt):
+        '''Add a new sub-panel for the dock
+
+        inputs:
+            key     : hashable key for the panel
+            txt     : text to show at panel head
+        '''
+
+        if key in self.panels:
+            raise KeyError('Panel key already exists')
+
+        self.panels[key] = Panel(txt)
+        self.addSeparator()
+        self.vbox.addLayout(self.panels[key])
+        self.target = self.panels[key].vbox
+
+    def setPanel(self, key):
+        '''Change the target panel'''
+        if key in self.panels:
+            self.target = self.panels[key].vbox
+        else:
+            self.target = self.vbox
+
+    def initPanels(self):
+        for key, panel in self.panels.items():
+            panel.toggle()
 
     def addSeparator(self):
         '''Add a horizonal separator line to the dock layout'''
@@ -463,7 +570,7 @@ class DockWidget(QDockWidget):
         '''Add a line of text to the dock'''
 
         label = QLabel(txt)
-        self.vbox.addWidget(label)
+        self.target.addWidget(label)
 
     def addSlider(self, txt, lo, hi, inc, val, func, ttip=''):
         '''Add a slider controlled parameter to the Dock Widget
@@ -481,7 +588,7 @@ class DockWidget(QDockWidget):
         slider.setToolTip(ttip)
         slider.func = func
 
-        self.vbox.addLayout(slider)
+        self.target.addLayout(slider)
         return slider
 
     def addToggle(self, txt, checked, func, ttip=''):
@@ -498,14 +605,14 @@ class DockWidget(QDockWidget):
         toggle.setChecked(checked)
         toggle.setToolTip(ttip)
 
-        self.vbox.addWidget(toggle)
+        self.target.addWidget(toggle)
         return toggle
 
     def addWidget(self, widget, stretch=-1):
-        self.vbox.addWidget(widget, stretch=stretch)
+        self.target.addWidget(widget, stretch=stretch)
 
     def addLayout(self, layout, stretch=-1):
-        self.vbox.addLayout(layout, stretch=stretch)
+        self.target.addLayout(layout, stretch=stretch)
 
 
 
@@ -597,6 +704,13 @@ class HoppingAnimator(QGraphicsView):
             self.logger.cleanup()
         self.model.cleanup()
 
+    def start(self):
+        for thread in self.threads:
+            thread.start()
+
+        self.zoomExtents(pad=True)
+        self.update()
+
     def _initGUI(self):
         '''Initialise the animator window'''
 
@@ -635,10 +749,22 @@ class HoppingAnimator(QGraphicsView):
     def passControls(self, dock):
         '''Add control fields to the given DockWidget'''
 
-        # hopping controls
 
-        dock.addSeparator()
-        dock.addText('Hopping Model:')
+        # animation controls
+        dock.addPanel('anim', 'Animation controls:')
+
+        if self.logger is not None:
+            func = self.enableLineView
+            dock.addToggle('Viewer', False, func,
+                'Toggle the lineview')
+
+        val = np.log10(self.rate)
+        func = lambda v: self.setPar(self, 'rate', 10**v, tc=2)
+        dock.addSlider('log(rate)', -3., 3., .5, val, func,
+            'Speed-up factor for the animation.')
+
+        # hopping controls
+        dock.addPanel('hopper', 'Hopping Model:')
 
         if self.model.fixed_pop:
             val = self.model.Nel
@@ -669,10 +795,12 @@ class HoppingAnimator(QGraphicsView):
         dock.addSlider('ktf', 1., 100., .1, val, func,
             'Thermal broadening factor, multiplier for thermal energy')
 
+
         # bulk controls
         if self.bulk is not None:
-            dock.addSeparator()
-            dock.addText('Bulk properties')
+            # dock.addSeparator()
+            # dock.addText('Bulk properties')
+            dock.addPanel('bulk', 'Bulk properties: ')
 
             val, func = self.bulk.lamb, lambda v: self.setPar(self.bulk, 'lamb', v)
             dock.addSlider('lambda', .01, .4, .005, val, func,
@@ -689,8 +817,7 @@ class HoppingAnimator(QGraphicsView):
 
         # tip controls
         if self.tip is not None:
-            dock.addSeparator()
-            dock.addText('Tip properties')
+            dock.addPanel('tip', 'Tip properties:')
 
             func = self.enableTip
             dock.addToggle('Enable tip:', True, func,
@@ -740,57 +867,10 @@ class HoppingAnimator(QGraphicsView):
             dock.addSlider('rate', 1., 50., .5, val, func,
                 'Tip scan rate in nm/s')
 
-        if self.clock is not None:
-
-            dock.addSeparator()
-            dock.addText('Clocking Field')
-
-            func = self.enableClock
-            dock.addToggle('Enable Clock', True, func,
-                'Toggle the clocking field')
-
-            func = lambda b: self.setPar(self.clock, 'flat', b)
-            dock.addToggle('Flat Clock', False, func,
-                'Toggle flat clocking field')
-
-            val = np.log10(self.clock.length)-1
-            func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
-            dock.addSlider('log(length)', 0, 3, .1, val, func,
-                'Wavelength, in nm')
-
-            val = np.log10(self.clock.freq)
-            func = lambda v: self.setPar(self.clock, 'freq', 10**v)
-            dock.addSlider('Frequency', -2, 3, .1, val, func,
-                'Frequency, in Hz')
-
-            val, func = self.clock.wf_A, lambda v: self.setPar(self.clock, 'wf_A', v)
-            dock.addSlider('Amplitude', 0, .5, .01, val, func,
-                'Amplitude, in eV')
-
-            val, func = self.clock.wf_0, lambda v: self.setPar(self.clock, 'wf_0', v)
-            dock.addSlider('Offset', -.2, .2, .01, val, func,
-                'Offset, in eV')
-
-        # animator controls
-        if True:
-            dock.addSeparator()
-            dock.addText('Animation controls')
-
-            if self.logger is not None:
-                func = self.enableLineView
-                dock.addToggle('Viewer', False, func,
-                    'Toggle the lineview')
-
-            val = np.log10(self.rate)
-            func = lambda v: self.setPar(self, 'rate', 10**v, tc=2)
-            dock.addSlider('log(rate)', -3., 3., .5, val, func,
-                'Speed-up factor for the animation.')
-
         # functionality
         if self.tip is not None:
 
-            dock.addSeparator()
-            dock.addText('Tip Programs:')
+            dock.addPanel('programs', 'Tip programs:')
 
             self.pad_edit = QLineEdit('2')
             self.pad_edit.setToolTip('Padding size, in angstroms')
@@ -821,6 +901,37 @@ class HoppingAnimator(QGraphicsView):
                 'Full 2D scan with the given number of lines'), stretch=1)
             dock.addLayout(hb)
 
+        if self.clock is not None:
+
+            dock.addPanel('clock', 'Clocking Field:')
+
+            func = self.enableClock
+            dock.addToggle('Enable Clock', True, func,
+                'Toggle the clocking field')
+
+            func = lambda b: self.setPar(self.clock, 'flat', b)
+            dock.addToggle('Flat Clock', False, func,
+                'Toggle flat clocking field')
+
+            val = np.log10(self.clock.length)-1
+            func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
+            dock.addSlider('log(length)', 0, 3, .1, val, func,
+                'Wavelength, in nm')
+
+            val = np.log10(self.clock.freq)
+            func = lambda v: self.setPar(self.clock, 'freq', 10**v)
+            dock.addSlider('Frequency', -2, 3, .1, val, func,
+                'Frequency, in Hz')
+
+            val, func = self.clock.wf_A, lambda v: self.setPar(self.clock, 'wf_A', v)
+            dock.addSlider('Amplitude', 0, .5, .01, val, func,
+                'Amplitude, in eV')
+
+            val, func = self.clock.wf_0, lambda v: self.setPar(self.clock, 'wf_0', v)
+            dock.addSlider('Offset', -.2, .2, .01, val, func,
+                'Offset, in eV')
+
+        dock.initPanels()
 
     def setPar(self, obj, attr, val, tc=1):
         setattr(obj, attr, val)
@@ -1003,7 +1114,7 @@ class HoppingAnimator(QGraphicsView):
             if hasattr(item, 'unsetCapture'):
                 item.unsetCapture()
 
-    def extents(self):
+    def extents(self, npad=1):
         '''Get the bounding box for the design ignoring the H sites'''
 
         ignore = lambda x: (isinstance(x, DB) and x.bg and not x.charged) or \
@@ -1014,15 +1125,15 @@ class HoppingAnimator(QGraphicsView):
         rect = items.pop().boundingRect()
         for item in items:
             rect |= item.boundingRect()
-        dx, dy = _SF*self.a, _SF*self.c
+        dx, dy = _SF*self.a*npad, _SF*self.c*npad
         rect.adjust(-dx, -dy, dx, dy)
 
         return rect
 
-    def zoomExtents(self):
+    def zoomExtents(self, pad=False):
         '''Scale view to contain all items in the scene.'''
 
-        rect = self.extents()
+        rect = self.extents(npad = 5 if pad else 1)
 
         self.fitInView(rect, Qt.KeepAspectRatio)
         self.centerOn(rect.center())
@@ -1290,6 +1401,22 @@ class MainWindow(QMainWindow):
     img_ext = { False: '.png',
                 True:  '.svg' if use_svg else '.pdf'}
 
+    key_map = {
+        'quit': Qt.Key_Q,
+        'options': Qt.Key_O,
+        'tick': Qt.Key_Space,
+        'zoom+': [Qt.Key_Plus, Qt.Key_Equal],
+        'zoom-': Qt.Key_Minus,
+        'debug': Qt.Key_D,
+        'stopwatch': Qt.Key_T,
+        'extents': Qt.Key_E,
+        'screenshot': Qt.Key_S,
+        'pause': Qt.Key_P,
+        'linescan': Qt.Key_L
+    }
+
+    key_check = lambda self, k1, k2: k1 in k2 if hasattr(k2, '__iter__') else k1 == k2
+
     def __init__(self, model, record=False, fps=30):
         ''' '''
         super(MainWindow, self).__init__()
@@ -1307,14 +1434,45 @@ class MainWindow(QMainWindow):
         self.initGUI()
         self.createDock()
 
-        for thread in self.animator.threads:
-            thread.start()
+        self.animator.start()
+
+    def quit(self):
+        '''Controlled close'''
+
+        if self.record:
+            self.animator.compile()
+        self.animator.cleanup()
+        self.close()
 
     def initGUI(self):
         ''' '''
 
+        self.setStyleSheet(loadQSS(os.path.join('.', 'stylesheets', 'animator.qss')))
+
         self.setGeometry(100, 100, self.WINX, self.WINY)
         self.setCentralWidget(self.animator)
+
+        self.createMenu()
+
+    def createMenu(self):
+        '''Create the menu bar'''
+
+        menubar = self.menuBar()
+
+        filemenu = menubar.addMenu('&File')
+        viewmenu = menubar.addMenu('&View')
+        helpmenu = menubar.addMenu('&Help')
+
+        filemenu.addAction('&Quit', self.quit)
+
+        viewmenu.addAction('&Zoom Extents', self.animator.zoomExtents)
+        viewmenu.addAction('&Screenshot:PNG', lambda : self._screenshot(False))
+        viewmenu.addAction('&Screenshot:PDF', lambda : self._screenshot(True))
+
+        helpmenu.addAction('&About', lambda *a, **k: None)
+        helpmenu.addAction('&Keybinds', lambda *a, **k: None)
+
+
 
     def createDock(self):
         '''Create the dock widget for simulation options'''
@@ -1372,38 +1530,42 @@ class MainWindow(QMainWindow):
         finally:
             pyqtRestoreInputHook()
 
+    def _screenshot(self, vector=False):
+        fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')
+        fname = os.path.join(self.img_dir, fname+self.img_ext[vector])
+        self.animator.screencapture(fname, vector)
 
     def keyPressEvent(self, e):
 
-        if e.key() == Qt.Key_Q:
-            if self.record:
-                self.animator.compile()
-            self.animator.cleanup()
-            self.close()
-        elif e.key() == Qt.Key_O:
+        ekey = e.key()
+        key_check = lambda s: self.key_check(ekey, self.key_map[s])
+
+        if key_check('quit'):
+            self.quit()
+        elif key_check('options'):
             self.dock.setVisible(not self.dock.isVisible())
-        elif e.key() == Qt.Key_Space:
+        elif key_check('tick'):
             self.animator.tick()
-        elif e.key() in [Qt.Key_Plus, Qt.Key_Equal]:
+        elif key_check('zoom+'):
             zfact = 1+self.animator.zoom_rate
             self.animator.scale(zfact, zfact)
-        elif e.key() == Qt.Key_Minus:
+        elif key_check('zoom-'):
             zfact = 1-self.animator.zoom_rate
             self.animator.scale(zfact, zfact)
-        elif e.key() == Qt.Key_D:
+        elif key_check('debug'):
             self.debug()
-        elif e.key() == Qt.Key_T:
+        elif key_check('stopwatch'):
             self.animator.stopwatch()
-        elif e.key() == Qt.Key_E:
+        elif key_check('extents'):
             self.animator.zoomExtents()
-        elif e.key() == Qt.Key_S:
+        elif key_check('screenshot'):
             vector = bool(e.modifiers() & Qt.ShiftModifier)
             fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')
             fname = os.path.join(self.img_dir, fname+self.img_ext[vector])
             self.animator.screencapture(fname, vector)
-        elif e.key() == Qt.Key_P:
+        elif key_check('pause'):
             self.animator.pause()
-        elif e.key() == Qt.Key_L:
+        elif key_check('linescan'):
             self.animator.lineScan()
 
 
@@ -1475,4 +1637,5 @@ if __name__ == '__main__':
     mw = MainWindow(model)
 
     mw.show()
+    mw.animator.start()
     sys.exit(app.exec_())
