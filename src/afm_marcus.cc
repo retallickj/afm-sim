@@ -11,7 +11,9 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <Python.h>
+#if !(defined(_WIN32) || defined(_WIN64))
+  #include <Python.h>
+#endif
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
@@ -85,6 +87,9 @@ bool AFMMarcus::runSim()
     command += "-o \"" + script_result_path + "\"\"";  // result path that the script writes to
     std::cout << "Calling command: " << command << std::endl;
     system(command.c_str());
+  #if (defined(_WIN32) || defined(_WIN64))
+  }
+  #else
   } else {
     std::cout << "Calling Python with new protocol" << std::endl;
     Py_Initialize();
@@ -105,6 +110,7 @@ bool AFMMarcus::runSim()
     PyRun_SimpleFile(script_file, scriptPath().c_str());
     Py_Finalize();
   }
+  #endif
 
   //FILE* script_file = fopen("db-sim-connector.py", "r");
   /*Py_Initialize();
