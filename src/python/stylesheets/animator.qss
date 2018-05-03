@@ -1,0 +1,7 @@
+QMenuBar{
+  background-color: #60aaaaaa
+}
+
+QMenuBar::item:selected{
+  background-color: #888888
+}

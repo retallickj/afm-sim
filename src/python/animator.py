@@ -31,6 +31,12 @@ _SF = 50     # scale factor
 _hmin = 25
 
 
+def loadQSS(fname):
+    with open(fname, 'r') as fp:
+        s = fp.read()
+    print(s)
+    return s
+
 class Thread(QThread):
     def __init__(self, func):
         super(Thread, self).__init__()
@@ -702,7 +708,7 @@ class HoppingAnimator(QGraphicsView):
         for thread in self.threads:
             thread.start()
 
-        self.zoomExtents()
+        self.zoomExtents(pad=True)
         self.update()
 
     def _initGUI(self):
@@ -1108,7 +1114,7 @@ class HoppingAnimator(QGraphicsView):
             if hasattr(item, 'unsetCapture'):
                 item.unsetCapture()
 
-    def extents(self):
+    def extents(self, npad=1):
         '''Get the bounding box for the design ignoring the H sites'''
 
         ignore = lambda x: (isinstance(x, DB) and x.bg and not x.charged) or \
@@ -1119,15 +1125,15 @@ class HoppingAnimator(QGraphicsView):
         rect = items.pop().boundingRect()
         for item in items:
             rect |= item.boundingRect()
-        dx, dy = _SF*self.a, _SF*self.c
+        dx, dy = _SF*self.a*npad, _SF*self.c*npad
         rect.adjust(-dx, -dy, dx, dy)
 
         return rect
 
-    def zoomExtents(self):
+    def zoomExtents(self, pad=False):
         '''Scale view to contain all items in the scene.'''
 
-        rect = self.extents()
+        rect = self.extents(npad = 5 if pad else 1)
 
         self.fitInView(rect, Qt.KeepAspectRatio)
         self.centerOn(rect.center())
@@ -1430,11 +1436,43 @@ class MainWindow(QMainWindow):
 
         self.animator.start()
 
+    def quit(self):
+        '''Controlled close'''
+
+        if self.record:
+            self.animator.compile()
+        self.animator.cleanup()
+        self.close()
+
     def initGUI(self):
         ''' '''
 
+        self.setStyleSheet(loadQSS(os.path.join('.', 'stylesheets', 'animator.qss')))
+
         self.setGeometry(100, 100, self.WINX, self.WINY)
         self.setCentralWidget(self.animator)
+
+        self.createMenu()
+
+    def createMenu(self):
+        '''Create the menu bar'''
+
+        menubar = self.menuBar()
+
+        filemenu = menubar.addMenu('&File')
+        viewmenu = menubar.addMenu('&View')
+        helpmenu = menubar.addMenu('&Help')
+
+        filemenu.addAction('&Quit', self.quit)
+
+        viewmenu.addAction('&Zoom Extents', self.animator.zoomExtents)
+        viewmenu.addAction('&Screenshot:PNG', lambda : self._screenshot(False))
+        viewmenu.addAction('&Screenshot:PDF', lambda : self._screenshot(True))
+
+        helpmenu.addAction('&About', lambda *a, **k: None)
+        helpmenu.addAction('&Keybinds', lambda *a, **k: None)
+
+
 
     def createDock(self):
         '''Create the dock widget for simulation options'''
@@ -1492,6 +1530,10 @@ class MainWindow(QMainWindow):
         finally:
             pyqtRestoreInputHook()
 
+    def _screenshot(self, vector=False):
+        fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')
+        fname = os.path.join(self.img_dir, fname+self.img_ext[vector])
+        self.animator.screencapture(fname, vector)
 
     def keyPressEvent(self, e):
 
@@ -1499,10 +1541,7 @@ class MainWindow(QMainWindow):
         key_check = lambda s: self.key_check(ekey, self.key_map[s])
 
         if key_check('quit'):
-            if self.record:
-                self.animator.compile()
-            self.animator.cleanup()
-            self.close()
+            self.quit()
         elif key_check('options'):
             self.dock.setVisible(not self.dock.isVisible())
         elif key_check('tick'):
@@ -1598,4 +1637,5 @@ if __name__ == '__main__':
     mw = MainWindow(model)
 
     mw.show()
+    mw.animator.start()
     sys.exit(app.exec_())
