@@ -98,7 +98,12 @@ class Logger(object):
             except:
                 pass
 
-        os.rename(self.temp_fn, self.log_fn)
+        while True:
+            try:
+                os.rename(self.temp_fn, self.log_fn)
+                break
+            except:
+                pass
 
         # if self.view and not self.viewing:
         #     self.startViewer()
@@ -507,7 +512,7 @@ class Panel(QVBoxLayout):
 class DockWidget(QDockWidget):
     ''' '''
 
-    WIDTH = 200
+    WIDTH = 400
 
     def __init__(self, parent=None):
         super(DockWidget, self).__init__(parent)
@@ -1053,8 +1058,6 @@ class HoppingAnimator(QGraphicsView):
     def tick(self):
         '''Time stepping protocol'''
 
-        # print('\n\n Tick start:'); t = wall()
-
         # draw last state
         for i,c in enumerate(self.model.charge):
             self.dbs[i].setCharge(c)
@@ -1076,8 +1079,6 @@ class HoppingAnimator(QGraphicsView):
             if self.logging:
                 self.log()
 
-            # print('\tLogging: {0}'.format(wall()-t)); t = wall()
-
             # update hopper state
             mcount = 30
             milli = mcount
@@ -1085,8 +1086,6 @@ class HoppingAnimator(QGraphicsView):
                 dt = self.model.step()
                 millis = dt*1000./self.rate
                 milli -= millis
-
-            # print('\tTick time: {0}'.format(wall()-t))
 
             self.tick_timer.start(min(max(int(millis),mcount), 10000))
 
