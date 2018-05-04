@@ -64,7 +64,7 @@ class TipModel(Channel):
 
     # scan parameters
     rate = 10.0    # default scan rate in nm/s
-    dt = 2e-3      # time step between updates in scan position
+    dt = 1e-3      # time step between updates in scan position
 
     def __init__(self):
         '''Initialise the model parametrization'''

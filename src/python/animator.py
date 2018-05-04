@@ -781,24 +781,20 @@ class HoppingAnimator(QGraphicsView):
 
         mdl = self.model.model
 
-        val = mdl.lamb
-        func = lambda v: self.setParFunc(mdl.setLambda, v)
-        dock.addSlider('lambda', 0.001, 0.3, .001, val, func,
-            'Reoranization Energy: thermal barrier for hopping')
+        val = mdl.dlamb
+        func = lambda v: self.setPar(mdl, 'dlamb', v)
+        dock.addSlider('lambda', 0, 0.2, .001, val, func,
+            'Reorganization Energy: thermal barrier for hopping')
 
-        val = np.log10(mdl.prefact)
+        val = np.log(mdl.fact)
         func = lambda v: self.setParFunc(mdl.setPrefactor, 10**v)
-        dock.addSlider('log(nu)', -5, 15, .2, val, func,
-            'Hopping rate prefactor')
+        dock.addSlider('factor', -2, 2, .1, val, func,
+            'Order scaling for the intrinsic hopping rates')
 
-        val = mdl.alph
+        val = mdl.hop_alph
         func = lambda v: self.setParFunc(mdl.setAttenuation, v)
         dock.addSlider('alpha', 1, 1e2, .1, val, func,
             'Attenuation length, in angstroms')
-
-        val, func = mdl.ktf, lambda v: self.setPar(mdl, 'ktf', v)
-        dock.addSlider('ktf', 1., 100., .1, val, func,
-            'Thermal broadening factor, multiplier for thermal energy')
 
 
         # bulk controls
@@ -1083,7 +1079,7 @@ class HoppingAnimator(QGraphicsView):
             mcount = 30
             milli = mcount
             while milli>0:
-                dt = self.model.step()
+                dt = self.model.step(milli*self.rate/1000.)
                 millis = dt*1000./self.rate
                 milli -= millis
 
@@ -1244,7 +1240,7 @@ class HoppingAnimator(QGraphicsView):
                }
 
         if hasattr(self.model.model, 'lamb'):
-            out['lamb'] = self.model.model.lamb
+            out['lamb'] = self.model.model.dlamb
 
         if self.bulk is not None:
             out['mu'] = self.bulk.mu
@@ -1582,9 +1578,9 @@ if __name__ == '__main__':
     pair = lambda n: [0, n]
 
     _or = [(0,0,0),(2,1,0),(6,1,0),(8,0,0),(4,3,0),(4,4,1)]
-    # _or.append((4,6,1))
-    # _or.append((-2,-1,0))
-    # _or.append((10,-1,0))
+    _or.append((-2,-1,0))
+    _or.append((10,-1,0))
+    _or.append((4,6,1) if False else (4,6,0))
 
     def QCA(N):
         qca = []
@@ -1621,7 +1617,7 @@ if __name__ == '__main__':
         return _maj
 
 
-    device = line
+    device = _or
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'

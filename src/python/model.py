@@ -18,12 +18,19 @@ class BaseModel(object):
     '''Virtual base class for all tunneling rate models'''
 
     # shared physical constants
-    hbar    = 6.582e-16     # eV.s
 
-    alph    = 10.   # inverse attenuation length, 1/angstroms
-    prefact = 1e-3  # scaling prefactor for rates
-    ktf     = 1.    # thermal broadening factor
+    hop_alph   = 10.    # hopping attenuation length, angstroms
+    cohop_alph = 100.   # cohopping attenuation length, angstroms
+
+    # calibration values
+    nu0     = .02   # calibration pair hopping frequency, Hz
+    r0      = 19.2  # calibration pair distance, angstroms
     lamb    = 0.04  # reorganization energy, eV
+
+    dlamb   = 0.00  # offset for lamb to account for tip
+    fact    = 1.0   # additional prefactor for hopping
+
+    expmax = 1e2
 
     def __init__(self):
         '''Initialise a hopping rate model'''
@@ -44,7 +51,7 @@ class BaseModel(object):
 
     def rate(self, dg, n, m):
         '''Compute the hopping rate from the energy delta, source, and target'''
-        raise NotImplementedError()
+        return self._exp(self.T0[n,m] + self._energy_rate(dg+self.dlamb))
 
     def rates(self, dG, occ, nocc):
         '''Compute the hopping rates from the energy deltas
@@ -55,9 +62,9 @@ class BaseModel(object):
             occ     : list of occupied sites, possible sources
             nocc    : list of unoccupied sites, possible targets
         '''
-        raise NotImplementedError()
+        return self._exp(self.T0[occ,:][:,nocc] + self._energy_rate(dG+self.dlamb))
 
-    def cohopping_rate(self, dG, i,j,k,l):
+    def cohopping_rate(self, dG, ij, kl):
         '''Compute the cohopping rate from sites i,j to sites k,l with the given
         energy delta
 
@@ -66,14 +73,15 @@ class BaseModel(object):
             i,j : electron source
             k,l : db targets
         '''
-        raise NotImplementedError()
+        (i,j), (k,l) = ij, kl
+        return self._exp(self._ch_spatial_rate(i,j,k,l) + self._energy_rate(dG+self.dlamb))
 
     def setAttenuation(self, alph):
         self.alph = alph
         self._spatial_rates()
 
     def setPrefactor(self, fact):
-        self.prefact = fact
+        self.fact = fact
         self._spatial_rates()
 
     def setLambda(self, lamb):
@@ -81,9 +89,26 @@ class BaseModel(object):
 
     # internal methods
 
+    # main function to reimplement in derived classes
+    def _energy_rate(self, dG):
+        return 0.
+
     def _spatial_rates(self):
-        '''compute the spatial decay prefactors'''
-        self.T0 = self.prefact*np.exp(-2*self.R/self.alph)
+        '''compute the spatial decay components'''
+        self.T0 = np.log(self.fact*self.nu0)-2*(self.R-self.r0)/self.hop_alph
+
+    def _ch_spatial_rate(self, i,j,k,l):
+
+        T = self.T0
+        A = .5*(-np.log(2)+np.log(np.exp(T[i,k]+T[j,l])+np.exp(T[i,l]+T[j,k])))
+        return A - 2*self.R[i,j]/self.cohop_alph
+
+    def _exp(self, arg):
+        '''Thresholded version of exp'''
+        mask = arg <= self.expmax
+        arg = arg*mask + self.expmax*(1-mask)
+        return np.exp(arg)
+
 
 
 # derived models
@@ -92,12 +117,6 @@ class VRHModel(BaseModel):
     '''Variable-Range Hopping model for hopping rates'''
 
     # model-specific parameters
-    prefact = 1.e11     # scaling prefactor for rates
-
-    lamb    = 0.02      # self-trapping energy, eV
-    expmax  = 1e2       # maximum argument for exp(x)
-
-    cohop_alph = 1e-2
 
     def __init__(self):
         super(VRHModel, self).__init__()
@@ -105,45 +124,13 @@ class VRHModel(BaseModel):
     def setup(self, X, Y, kt):
         super(VRHModel, self).setup(X, Y, kt)
 
-    def rate(self, dg, n, m):
-        arg = -self.beta*(dg+self.lamb)/self.ktf
-        return self.T0[n,m]*self._exp(arg)
-
-    def rates(self, dG, occ, nocc):
-        arg = -self.beta*(dG+self.lamb)/self.ktf
-        return self.T0[occ,:][:,nocc]*self._exp(arg)
-
-    def _exp(self, arg):
-        '''Thresholded version of exp'''
-        mask = arg <= self.expmax
-        arg = arg*mask + self.expmax*(1-mask)
-        return np.exp(arg)
-
-    def cohopping_rate(self, dG, ij, kl):
-        ''' '''
-
-        i,j = ij
-        k,l = kl
-        t0 = np.sqrt(self.T0[i,k]*self.T0[j,l]+self.T0[i,l]*self.T0[j,k])
-        t0 *= np.exp(-self.cohop_alph*self.R[i,j])
-
-        arg = -self.beta*(dG+self.lamb)/self.ktf
-        return t0*self._exp(arg)
+    def _energy_rate(self, dG):
+        return -dG*self.beta
 
 
 
 class MarcusModel(BaseModel):
     '''Marcus Theory model for hopping rates'''
-
-    # model-specific parameters
-    lamb    = 0.040      # reorganization energy, eV
-
-    # transfer integral parameters
-    prefact = 1e-5      # prefactor
-
-    # cohopping parameters
-    cohop_lamb = lamb   # cohopping reorganization energy, eV
-    cohop_alph = 1e-2   # cohopping inverse attenuation length, 1/angstroms
 
     def __init__(self):
         super(MarcusModel, self).__init__()
@@ -155,26 +142,12 @@ class MarcusModel(BaseModel):
         self.setLambda(self.lamb)
 
     def setLambda(self, lamb):
-        self.lamb = lamb
-        self.lbeta = np.inf if lamb == 0 else self.beta/lamb/self.ktf
-        self.Tp = self.T0*np.sqrt(self.lbeta*np.pi)/self.hbar
+        super(MarcusModel,self).setLambda(lamb)
+        self.lbeta = np.inf if lamb == 0 else .25*self.beta/lamb
 
-    def rate(self, dg, n, m):
-        return self.Tp[n,m]*np.exp(-.25*self.lbeta*(dg+self.lamb)**2)
+    def _energy_rate(self, dG):
+        return -dG*(dG+self.lamb)*self.lbeta
 
-    def rates(self, dG, occ, nocc):
-        return self.Tp[occ,:][:,nocc]*np.exp(-.25*self.lbeta*(dG+self.lamb)**2)
-
-    def cohopping_rate(self, dG, ij, kl):
-        i,j = ij
-        k,l = kl
-        return self.cohop_tint(i,j,k,l)*np.exp(-.25*self.lbeta*(dG+self.cohop_lamb)**2)
-
-
-    # specific methods
-
-    def cohop_tint(self, i,j,k,l):
-        return np.sqrt(self.Tp[i,k]*self.Tp[j,l]+self.Tp[i,l]*self.Tp[j,k])*np.exp(-self.cohop_alph*self.R[i,j])
 
 models = {  'marcus':   MarcusModel,
             'VRH':      VRHModel }
