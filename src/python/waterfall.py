@@ -27,7 +27,7 @@ class Waterfall:
     ppnm = 50   # pixels per nm
     sig = .8    # 'atom diameter'
 
-    lo, hi = 1., 2.     # amplitudes of unoccupied/occupied DBs
+    lo, hi = 1., 4.     # amplitudes of unoccupied/occupied DBs
     portrait = True     # portrait style plotting
     xticks = False
 
@@ -55,7 +55,7 @@ class Waterfall:
 
 
 
-    def generate(self, nscans=100, srate=10.0, pad=1.0, mu=.25, lamb=0.04):
+    def generate(self, nscans=100, srate=10.0, pad=1.0, mu=.25):
         '''Generate the waterfall image.
 
         inputs:
@@ -63,7 +63,6 @@ class Waterfall:
             srate   : tip scan rate, in nm/s
             pad     : padding on either side of device, in nm
             mu      : Ef-DB- difference, eV
-            lamb    : self-trapping energy
         '''
 
         if not self.hopper.initialised:
@@ -72,8 +71,6 @@ class Waterfall:
         bulk = self.hopper.getChannel('bulk')
         if bulk is not None:
             bulk.mu = mu
-
-        self.hopper.model.setLambda(lamb)
 
         # burn
         self.hopper.burn(10, per=True)
@@ -188,9 +185,14 @@ class Waterfall:
         ax.tick_params(axis='both', which='major', labelsize=TFS)
 
         # colorbar
-        cbar = fig.colorbar(im, cax=cax, ticks=[0,1,2], orientation=cor)
+        cbar = fig.colorbar(im, cax=cax, ticks=[0,self.lo,self.hi], orientation=cor)
         cbar.set_label('Charges', fontsize=FS)
         cbar.ax.tick_params(labelsize=TFS)
+
+        if self.portrait:
+            cbar.ax.set_xticklabels([0,1,2])
+        else:
+            cbar.ax.set_yticklabels([0,1,2])
 
 
         plt.tight_layout(pad=0, h_pad=0, w_pad=0)
