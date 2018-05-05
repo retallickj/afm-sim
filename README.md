@@ -79,4 +79,4 @@ If there are ever fewer than 2 free DBs the cohopping implementation will throw 
 *Edit: 2018.05.02 Not sure if this still happens*
 
 
-[viewer]: https://github.com/retallickj/afm-sim/img/viewer.png "Viewer Example"
+[viewer]: img/viewer.png "Viewer Example"
