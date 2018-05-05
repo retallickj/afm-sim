@@ -42,8 +42,9 @@ class TipModel(Channel):
     tipDW   = 0.65  # actual difference in tip-sample work-functions, eV
 
     # calibration data
-    TIBBvH_fname = os.path.join('.', 'data', 'TIBB_vs_H.dat')
-    TIBBvR_fname = os.path.join('.', 'data', 'TIBB_vs_R_d200pm.dat')
+    data_dir = os.path.join(os.path.dirname(__file__), 'data')
+    TIBBvH_fname = os.path.join(data_dir, 'TIBB_vs_H.dat')
+    TIBBvR_fname = os.path.join(data_dir, 'TIBB_vs_R_d200pm.dat')
     tipR0   = 5.0   # tip radius in FEM calculations, nm
     tipH0   = 0.2   # tip height in FEM calculations, nm
     tipDW0  = 0.9   # tip-sample work-function delta in FEM calculations, eV
@@ -64,7 +65,7 @@ class TipModel(Channel):
 
     # scan parameters
     rate = 10.0    # default scan rate in nm/s
-    ds = 1e-1      # travel distance between time steps
+    ds = 1e-1      # travel distance between time steps, nm
 
     def __init__(self):
         '''Initialise the model parametrization'''

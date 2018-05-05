@@ -1642,7 +1642,7 @@ if __name__ == '__main__':
 
     def wire(N):
         wire = []
-        dx, dp, x = 2, 9, 0
+        dx, dp, x = 2, 8, 0
         for n in range(N):
             wire += [(x,0,0), (x+dx,0,0)]
             x += dp
@@ -1667,13 +1667,13 @@ if __name__ == '__main__':
         return _maj
 
 
-    device = inv_wire(20)
+    device = wire(11)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
 
-    model = HoppingModel(device, model='marcus')
+    model = HoppingModel(device, model='VRH')
     model.addChannel('bulk')
     model.addChannel('clock', enable=False)
     model.addChannel('tip', enable=False)
