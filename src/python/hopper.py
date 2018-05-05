@@ -166,6 +166,15 @@ class HoppingModel:
                 return channel
         return None
 
+    def updateFRHPars(self, hop=None, cohop=None):
+        self.hop_range = self.hop_range if hop is None else hop
+        self.cohop_range = self.cohop_range if cohop is None else cohop
+        self._prepareFRH()
+        if self.enable_cohop:
+            self.ch_lifetimes = {ij: self.rebirth() for ij in self.ch_targets}
+        self.update()
+
+
 
     def addChannel(self, channel, enable=True):
         '''Add a Channel instance to the HoppingModel.

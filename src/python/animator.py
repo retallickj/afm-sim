@@ -388,8 +388,8 @@ class FieldSlider(QHBoxLayout):
         self.slider.sliderReleased.connect(self.sliderReleased)
         self.slider.installEventFilter(self)
 
-        self.txt.setMaximumWidth(70)
-        self.out.setMaximumWidth(70)
+        self.txt.setMaximumWidth(80)
+        self.out.setMaximumWidth(80)
 
         self.addWidget(self.txt, stretch=8)
         self.addWidget(self.slider, stretch=40)
@@ -801,6 +801,18 @@ class HoppingAnimator(QGraphicsView):
         func = lambda v: self.setParFunc(mdl.setAttenuation, v)
         dock.addSlider('alpha', 1, 1e2, .1, val, func,
             'Attenuation length, in angstroms')
+
+        val = self.model.hop_range
+        func = lambda v: self.setParFunc(
+            lambda x: self.model.updateFRHPars(x, None), v)
+        dock.addSlider('FRH: hop', 10, 100, 2, val, func,
+            'Maximum range for surface hopping, in angstroms')
+
+        val = self.model.cohop_range
+        func = lambda v: self.setParFunc(
+            lambda x: self.model.updateFRHPars(None, x), v)
+        dock.addSlider('FRH: cohop', 10, 50, 2, val, func,
+            'Maximum range between surface cohopping sources, in angstroms')
 
 
         # bulk controls
@@ -1655,7 +1667,7 @@ if __name__ == '__main__':
         return _maj
 
 
-    device = _or
+    device = inv_wire(20)
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
