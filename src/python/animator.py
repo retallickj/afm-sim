@@ -1496,7 +1496,7 @@ class MainWindow(QMainWindow):
         viewmenu.addAction('&Screenshot:PNG', lambda : self._screenshot(False))
         viewmenu.addAction('&Screenshot:PDF', lambda : self._screenshot(True))
 
-        helpmenu.addAction('&About', lambda *a, **k: None)
+        helpmenu.addAction('&About', self.about)
         helpmenu.addAction('&Keybinds', lambda *a, **k: None)
 
     def createDock(self):
@@ -1528,6 +1528,12 @@ class MainWindow(QMainWindow):
             shcut.setWhatsThis(doc)
             shcut.activated.connect(callback)
             return shcut
+
+    def about(self):
+        '''open window with information about the tool'''
+        QMessageBox.about(self, 'About Tool', '...')
+
+
 
     def tickSlot(self):
 

@@ -146,7 +146,7 @@ class MarcusModel(BaseModel):
         self.lbeta = np.inf if lamb == 0 else .25*self.beta/lamb
 
     def _energy_rate(self, dG):
-        return -dG*(dG+self.lamb)*self.lbeta
+        return -dG*(dG+2*self.lamb)*self.lbeta
 
 
 models = {  'marcus':   MarcusModel,
