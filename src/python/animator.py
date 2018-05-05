@@ -62,6 +62,9 @@ class Logger(object):
         self.root = os.path.abspath(root)
         self.log_fn = os.path.join(self.root, self._log_file)
 
+        # lineview name
+        self.viewerpath = os.path.join(os.path.dirname(__file__), 'lineview.py')
+
         if not os.path.exists(self.root):
             print('Logger creating directory: {0}'.format(self.root))
             os.makedirs(self.root)
@@ -113,7 +116,7 @@ class Logger(object):
         self.cleanup(silent=False)
         self.viewing = True
         self.view_fp = open(os.path.join(self.root, 'stdout'), 'a')
-        self.P = Popen(['python3', 'lineview.py', self.log_fn],
+        self.P = Popen(['python3', self.viewerpath, self.log_fn],
                     stdout=self.view_fp, stderr=self.view_fp)
 
 
