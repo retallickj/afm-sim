@@ -1679,7 +1679,7 @@ if __name__ == '__main__':
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
 
-    model = HoppingModel(device, model='VRH')
+    model = HoppingModel(device, model='marcus')
     model.addChannel('bulk')
     model.addChannel('clock', enable=False)
     model.addChannel('tip', enable=False)
