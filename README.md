@@ -69,9 +69,14 @@ Field   |   Context
 
 ##Viewer
 
+![alt text][viewer]
+
 The Viewer is an additional tool which shows a representation of the device (currently collapsed onto the x axis). A well is drawn for each well with the black line indicating the energy of the DB- state and the green dots showing the current charge locations. For significant **lambda**, the dots will be noticeably lower than the DB- levels to indicate the self-trapping. If a DB is being tracked (see **Right Click** behaviour), blue lines will be shown for the possible hopping targets which indicate the effective energy level seen by the tracked charge. The tip will be shown if included with both radii shown and the apex indicated. *Clearly insert figure here*.
 
 ## Current Bugs
 
 If there are ever fewer than 2 free DBs the cohopping implementation will throw an Error.
 *Edit: 2018.05.02 Not sure if this still happens*
+
+
+[viewer]: https://github.com/retallickj/afm-sim/img/viewer.png "Viewer Example"
