@@ -1487,17 +1487,21 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
 
         filemenu = menubar.addMenu('&File')
+        controlmenu = menubar.addMenu('&Controls')
         viewmenu = menubar.addMenu('&View')
         helpmenu = menubar.addMenu('&Help')
 
         filemenu.addAction('&Quit', self.quit)
+
+        controlmenu.addAction('&Options', self.toggleOptions)
+        controlmenu.addAction('&Pause/Resume', self.animator.pause)
 
         viewmenu.addAction('&Zoom Extents', self.animator.zoomExtents)
         viewmenu.addAction('&Screenshot:PNG', lambda : self._screenshot(False))
         viewmenu.addAction('&Screenshot:PDF', lambda : self._screenshot(True))
 
         helpmenu.addAction('&About', self.about)
-        helpmenu.addAction('&Keybinds', lambda *a, **k: None)
+        #helpmenu.addAction('&Keybinds', lambda *a, **k: None)
 
     def createDock(self):
         '''Create the dock widget for simulation options'''
@@ -1531,9 +1535,12 @@ class MainWindow(QMainWindow):
 
     def about(self):
         '''open window with information about the tool'''
-        QMessageBox.about(self, 'About Tool', '...')
 
+        QMessageBox.about(self, 'About Tool',
+            "<a href='https://github.com/retallickj/afm-sim'>README</a>")
 
+    def toggleOptions(self):
+        self.dock.setVisible(not self.dock.isVisible())
 
     def tickSlot(self):
 
@@ -1595,7 +1602,7 @@ class MainWindow(QMainWindow):
         if key_check('quit'):
             self.quit()
         elif key_check('options'):
-            self.dock.setVisible(not self.dock.isVisible())
+            self.toggleOptions()
         elif key_check('tick'):
             self.animator.tick()
         elif key_check('zoom+'):
@@ -1673,7 +1680,8 @@ if __name__ == '__main__':
         return _maj
 
 
-    device = wire(11)
+
+    device = line
 
     # NOTE: recording starts immediately if record==True. Press 'Q' to quit and
     #       compile temp files into an animation ::'./rec.mp4'
