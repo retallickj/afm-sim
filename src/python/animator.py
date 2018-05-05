@@ -34,7 +34,6 @@ _hmin = 25
 def loadQSS(fname):
     with open(fname, 'r') as fp:
         s = fp.read()
-    print(s)
     return s
 
 class Thread(QThread):
@@ -629,7 +628,10 @@ class HoppingAnimator(QGraphicsView):
     b = 7.68    # lattice vector in y, angstroms    (inter dimer row)
     c = 2.25    # dimer pair separation, angstroms
 
-    rate = 1   # speed-up factor
+    rate = 1    # speed-up factor
+    fps = 30    # ideal animation
+
+    fncount = 5     # number of frames for fpstrack smoothing
 
     xpad, ypad = 8, 4
 
@@ -683,7 +685,7 @@ class HoppingAnimator(QGraphicsView):
                 shutil.rmtree(self.record_dir)
             os.makedirs(self.record_dir)
             self.rind = 0   # record index
-            self.fps = fps
+            self.record_fps = fps
 
             # setup threads
             self.threads.append(Thread(self.record))
@@ -699,6 +701,7 @@ class HoppingAnimator(QGraphicsView):
         self.panx, self.pany = 0., 0.
         self.path = []
 
+        self.fps_load, self.fcount = 0., 0
         self.stoptime = None
         self.dbn = -1
         self.state = {}
@@ -737,10 +740,13 @@ class HoppingAnimator(QGraphicsView):
         if self.tip is not None:
             self.tip_item = Tip()
             self.scene.addItem(self.tip_item)
+            self.tip_item.setVisible(self.tip.enabled)
 
         if self.clock is not None:
             self.gradient = ClockGradient(self.clock, self.scene.sceneRect())
-            self.scene.setForegroundBrush(self.gradient)
+            brush = self.gradient if self.clock.enabled else QBrush(Qt.NoBrush)
+            self.scene.setForegroundBrush(brush)
+
         self.scene.setBackgroundBrush(QBrush(self.bgcol, Qt.SolidPattern))
         self.setWindowTitle('Hopping Animator')
 
@@ -784,7 +790,7 @@ class HoppingAnimator(QGraphicsView):
         val = mdl.dlamb
         func = lambda v: self.setPar(mdl, 'dlamb', v)
         dock.addSlider('lambda', 0, 0.2, .001, val, func,
-            'Reorganization Energy: thermal barrier for hopping')
+            'Self Trapping Energy')
 
         val = np.log(mdl.fact)
         func = lambda v: self.setParFunc(mdl.setPrefactor, 10**v)
@@ -803,13 +809,13 @@ class HoppingAnimator(QGraphicsView):
             # dock.addText('Bulk properties')
             dock.addPanel('bulk', 'Bulk properties: ')
 
-            val, func = self.bulk.lamb, lambda v: self.setPar(self.bulk, 'lamb', v)
-            dock.addSlider('lambda', .01, .4, .005, val, func,
-                'Self-Trapping energy for surface-bulk hopping')
+            # val, func = self.bulk.lamb, lambda v: self.setPar(self.bulk, 'lamb', v)
+            # dock.addSlider('lambda', .01, .4, .005, val, func,
+            #     'Self-Trapping energy for surface-bulk hopping')
 
             val, func = self.bulk.mu, lambda v: self.setPar(self.bulk, 'mu', v)
             dock.addSlider('mu', 0., .5, .01, val, func,
-                'Chemical Potential: local potential at which charges will hop between the bulk and the surface')
+                'Chemical Potential: difference between Fermi and intrinsic DB- levels')
 
             val = np.log10(self.bulk.nu)
             func = lambda v: self.setPar(self.bulk, 'nu', 10**v)
@@ -820,8 +826,8 @@ class HoppingAnimator(QGraphicsView):
         if self.tip is not None:
             dock.addPanel('tip', 'Tip properties:')
 
-            func = self.enableTip
-            dock.addToggle('Enable tip:', True, func,
+            val, func = self.tip.enabled, self.enableTip
+            dock.addToggle('Enable tip:', val, func,
                 'Toggle the tip')
 
             val, func = self.tip.scale, lambda v: self.setPar(self.tip, 'scale', v)
@@ -832,19 +838,19 @@ class HoppingAnimator(QGraphicsView):
             dock.addSlider('epsr', 1., 10., .2, val, func,
                 'Relative permittivity for image charge interactions')
 
-            val, func = self.tip.lamb, lambda v: self.setPar(self.tip, 'lamb', v)
-            dock.addSlider('lambda', 0.01, .4, .005, val, func,
-                'Self-Trapping energy for surface-tip hopping')
-
-            val, func = self.tip.mu, lambda v: self.setPar(self.tip, 'mu', v)
-            dock.addSlider('mu', -1., 1., .01, val, func,
-                'Chemical Potential: local potential at which charges will hop \
-                between the tip and surface')
-
-            val = np.log10(self.tip.TR0)
-            func = lambda v: self.setPar(self.tip, 'TR0', 10**v)
-            dock.addSlider('log(nu)', -1, 5, .5, val, func,
-                'Maximum hopping rate between the tip and surface')
+            # val, func = self.tip.lamb, lambda v: self.setPar(self.tip, 'lamb', v)
+            # dock.addSlider('lambda', 0.01, .4, .005, val, func,
+            #     'Self-Trapping energy for surface-tip hopping')
+            #
+            # val, func = self.tip.mu, lambda v: self.setPar(self.tip, 'mu', v)
+            # dock.addSlider('mu', -1., 1., .01, val, func,
+            #     'Chemical Potential: local potential at which charges will hop \
+            #     between the tip and surface')
+            #
+            # val = np.log10(self.tip.TR0)
+            # func = lambda v: self.setPar(self.tip, 'TR0', 10**v)
+            # dock.addSlider('log(nu)', -1, 5, .5, val, func,
+            #     'Maximum hopping rate between the tip and surface')
 
 
             val = 1e3*self.tip.tipH
@@ -906,8 +912,8 @@ class HoppingAnimator(QGraphicsView):
 
             dock.addPanel('clock', 'Clocking Field:')
 
-            func = self.enableClock
-            dock.addToggle('Enable Clock', True, func,
+            val, func = self.clock.enabled, self.enableClock
+            dock.addToggle('Enable Clock', val, func,
                 'Toggle the clocking field')
 
             func = lambda b: self.setPar(self.clock, 'flat', b)
@@ -1015,19 +1021,20 @@ class HoppingAnimator(QGraphicsView):
     def record(self):
         '''Record the QGraphicsScene at the given fps'''
 
-        assert self.fps>0 and self.fps<=1000, 'Invalid fps'
+        assert self.record_fps>0 and self.record_fps<=1000, 'Invalid fps'
 
         fname = os.path.join(self.record_dir, 'grab{0:06d}.png'.format(self.rind))
         self.screencapture(fname)
 
         self.rind += 1
-        self.record_timer.start(int(1000./self.fps))
+        self.record_timer.start(int(1000./self.record_fps))
 
     def compile(self):
         '''compile the recording directory into a video'''
 
         os.chdir(self.record_dir)
-        os.system("ffmpeg -r {0} -f image2 -i grab%06d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p ../rec.mp4".format(int(self.fps)))
+        os.system("ffmpeg -r {0} -f image2 -i grab%06d.png -vcodec libx264 \
+            -crf 25 -pix_fmt yuv420p ../rec.mp4".format(int(self.record_fps)))
         os.chdir('..')
         shutil.rmtree(self.record_dir)
 
@@ -1037,7 +1044,7 @@ class HoppingAnimator(QGraphicsView):
         self.update()
 
     def setTipTarget(self, x, y):
-        if self.tip is not None:
+        if self.tip is not None and self.tip.enabled:
             self.tip.setTarget(.1*x, .1*y)
             self.tick()
 
@@ -1054,11 +1061,13 @@ class HoppingAnimator(QGraphicsView):
     def tick(self):
         '''Time stepping protocol'''
 
+        self._t = wall()
+
         # draw last state
         for i,c in enumerate(self.model.charge):
             self.dbs[i].setCharge(c)
 
-        if self.tip is not None:
+        if self.tip is not None and self.tip.enabled:
             self.updateTip()
 
         if self.clock is not None and self.clock.enabled:
@@ -1076,19 +1085,27 @@ class HoppingAnimator(QGraphicsView):
                 self.log()
 
             # update hopper state
-            mcount = 30
-            milli = mcount
-            while milli>0:
-                dt = self.model.step(milli*self.rate/1000.)
-                millis = dt*1000./self.rate
-                milli -= millis
+            timer = wall()
+            trem = 1./self.fps  # runtime remaining
+            while trem>0:
+                dt = self.model.step(trem*self.rate)/self.rate # <= trem
+                trem -= dt
+            elapsed = wall()-timer
 
-            self.tick_timer.start(min(max(int(millis),mcount), 10000))
+            self.fps_load += elapsed*self.fps
+            self.fcount += 1
+
+            tick = 1./self.fps-elapsed  # time remainng in frame
+            self.tick_timer.start(max(0, int(1000.*tick)))
 
             if self.stoptime is not None and self.clock.t >= self.stoptime:
                 self.stoptime = None
                 self.pause()
 
+    def getFPSLoad(self):
+        load = 100*self.fps_load/self.fncount
+        self.fps_load, self.fcount = 0., 0
+        return load
 
     def setCapture(self):
         self.state['bg'] = self.scene.backgroundBrush()
@@ -1162,7 +1179,7 @@ class HoppingAnimator(QGraphicsView):
     def stopwatch(self):
         '''Automatically pause after '''
 
-        if self.clock is not None:
+        if self.clock is not None and self.clock.enabled:
             self.stoptime = self.clock.t + self.stopwatch_step/self.clock.freq
         else:
             self.stoptime = None
@@ -1274,7 +1291,7 @@ class HoppingAnimator(QGraphicsView):
         elif e.button() == Qt.LeftButton:
 
             # path lists
-            if self.tip is not None:
+            if self.tip is not None and self.tip.enabled:
                 if e.modifiers() & Qt.ShiftModifier:
                     pos, dp = self.mapToScene(e.pos())/_SF, .5*self.tip_item.D/_SF
                     if e.modifiers() & Qt.ControlModifier:
@@ -1396,6 +1413,8 @@ class MainWindow(QMainWindow):
     img_ext = { False: '.png',
                 True:  '.svg' if use_svg else '.pdf'}
 
+
+
     key_map = {
         'quit': Qt.Key_Q,
         'options': Qt.Key_O,
@@ -1417,7 +1436,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         self.record = record
-        self.fps = fps
+        self.record_fps = fps
 
         self.dbn = -1       # tracked db index
         self.model = model
@@ -1468,8 +1487,6 @@ class MainWindow(QMainWindow):
         helpmenu.addAction('&About', lambda *a, **k: None)
         helpmenu.addAction('&Keybinds', lambda *a, **k: None)
 
-
-
     def createDock(self):
         '''Create the dock widget for simulation options'''
 
@@ -1484,12 +1501,33 @@ class MainWindow(QMainWindow):
         self.ecount = QLabel()
         self.dock.addWidget(self.ecount)
 
+        self.fpstrack = QLabel()
+        self.dock.addWidget(self.fpstrack)
+
         self.animator.passControls(self.dock)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
 
+    def setupShortcuts(self):
+
+        def make(keybind, callback, hold=False, doc=''):
+            shcut = QShortcut(keybind, self)
+            shcut.setAutoRepeat(hold)
+            shcut.setWhatsThis(doc)
+            shcut.activated.connect(callback)
+            return shcut
+
     def tickSlot(self):
+
+        # count electrons
         self.ecount.setText('Number of Electrons: {0}'.format(self.model.Nel))
+
+        # display fps load
+        if self.animator.fcount == self.animator.fncount:
+            self.fpstrack.setText('Runtime Load: {0:5.0f}%'.format(
+                    self.animator.getFPSLoad()))
+
+        # db tracking
         self.echoDB()
 
     def trackDB(self, n):
@@ -1580,7 +1618,7 @@ if __name__ == '__main__':
     _or = [(0,0,0),(2,1,0),(6,1,0),(8,0,0),(4,3,0),(4,4,1)]
     _or.append((-2,-1,0))
     _or.append((10,-1,0))
-    _or.append((4,6,1) if False else (4,6,0))
+    _or.append((4,6,1) if True else (4,6,0))
 
     def QCA(N):
         qca = []
@@ -1625,8 +1663,8 @@ if __name__ == '__main__':
 
     model = HoppingModel(device, model='marcus')
     model.addChannel('bulk')
-    model.addChannel('clock')
-    model.addChannel('tip')
+    model.addChannel('clock', enable=False)
+    model.addChannel('tip', enable=False)
     #model.fixElectronCount(3)
 
     app = QApplication(sys.argv)

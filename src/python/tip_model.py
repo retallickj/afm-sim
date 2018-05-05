@@ -64,7 +64,7 @@ class TipModel(Channel):
 
     # scan parameters
     rate = 10.0    # default scan rate in nm/s
-    dt = 1e-3      # time step between updates in scan position
+    ds = 1e-1      # travel distance between time steps
 
     def __init__(self):
         '''Initialise the model parametrization'''
@@ -85,7 +85,7 @@ class TipModel(Channel):
 
     def tick(self):
         '''Time until the tip position/state changes'''
-        return self.dt if self.path and self.enabled else np.inf
+        return self.ds/self.rate if self.path and self.enabled else np.inf
 
     def run(self, dt):
         '''Advance the tip by the given amount of time'''

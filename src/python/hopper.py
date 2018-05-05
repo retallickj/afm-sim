@@ -167,12 +167,13 @@ class HoppingModel:
         return None
 
 
-    def addChannel(self, channel):
+    def addChannel(self, channel, enable=True):
         '''Add a Channel instance to the HoppingModel.
 
         inputs:
             channel : Channel to include. Must either be a Channel instance or
                      a string indicating an accepted channel type in Channels.
+            enable  : Enable the channel immediately
         return:
             handle for the added Channel
         '''
@@ -187,6 +188,8 @@ class HoppingModel:
         else:
             raise KeyError('Unrecognized Channel format: must be either a str \
                                 or Channel derived class')
+
+        self.channels[-1].setEnabled(enable)
         return self.channels[-1]
 
 
