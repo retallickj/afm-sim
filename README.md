@@ -35,14 +35,43 @@ Key | Behaviour
 ## Mouse Commands
 Button  | Behaviour
 :---:   | ---
-**Left Click**  | Clicking any hydrogen site will add/remove a fixed charge at that location. This will not automatically update the time before the next hop so you should advance the animation after any changes.
+**Left Click**  | Clicking any hydrogen site will add/remove a fixed charge at that location.
 **Right Click** | Right clicking a DB will track its local potential on the options dialog. Re-click the same DB or a hydrogen site to end the tracking.
 **Middle Click** | Panning
 **Control + Wheel** | Zoom anchored at cursor.
 
+## Tip Paths
+If the tip is enabled (see **Tip Properties** in **Options Panel** below), you are able to
+specify paths for the tip to follow. When first created, the tip will appear at the origin
+of the scene coordinates. Holding shift and left clicking will cause the tip to move to the
+clicked position at the current tip scan rate (changeable under **Tip Properties**).
+
+There are currently two programmed paths:
+
+1. **Line Scan**: The **L** shortcut or **Line** button will start a line scan
+along the x axis that is as wide as your full device plus the **Padding**. This scan
+will occur on the nearest dimer row to the initial tip position.
+2. **Full Scan**: The **Full** button will perform a 2D raster scan over a
+rectangle containing the full device plus **Padding** on each side. The tip will
+device this region into **Lines** line scans.
+
+These paths, and the manual paths described below, repeat. To stop the tip, you
+currently have to shift click.
+
+#### Creating paths
+
+If you hold control while shift clicking, it indicates a node along a multi-node
+path. You can continue to shift click, holding the control key, for as many
+points as you like. Once control is released, the tip will begin to trace the
+specified path.
+
 ## Options Panel
 
 The options panel offers a selection of parameter controls/views for debugging purposes. Details of slider controls can be found in the hover tooltips.
+
+<big>**NOTE: Currently, the sliders in the options panel only update the simulation values
+when the handle is released by the mouse. Using the keyboard or clicking elsewhere on the
+slider may not correctly update the values. Fix that soon.**</big> 
 
 |Field   |   Context
 | :---:   | ---
