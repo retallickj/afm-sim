@@ -10,7 +10,7 @@ __copyright__   = 'MIT License'
 __version__     = '1.2'
 __date__        = '2018-03-26'  # last update
 
-import shutil, os
+import shutil, os, sys
 import numpy as np
 from itertools import product
 import json
@@ -92,9 +92,10 @@ class Logger(object):
 
         root = os.path.join(os.path.dirname(__file__))
 
-        exe = os.path.join(root, 'lineview.exe')
-        if os.path.isfile(exe):
-            return [exe,]
+        if sys.platform != 'linux':
+            exe = os.path.join(root, 'lineview.exe')
+            if os.path.isfile(exe):
+                return [exe,]
 
         py = os.path.join(root, 'lineview.py')
         if os.path.isfile(py):
