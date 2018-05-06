@@ -407,8 +407,9 @@ class FieldSlider(QHBoxLayout):
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setTickInterval(1)
+        self.slider.setTracking(False)
         self.slider.valueChanged.connect(self.valueChanged)
-        self.slider.sliderReleased.connect(self.sliderReleased)
+        self.slider.sliderMoved.connect(self.sliderMoved)
         self.slider.installEventFilter(self)
 
         self.txt.setMaximumWidth(80)
@@ -436,13 +437,18 @@ class FieldSlider(QHBoxLayout):
     def setToolTip(self, txt):
         self.txt.setToolTip(txt)
 
+    def echoVal(self, val):
+        self.out.setText('{0:.3f}'.format(val))
+
     # event handling
     def valueChanged(self):
         self.val = self.fval(self.slider.value())
-        self.out.setText('{0:.3f}'.format(self.val))
-
-    def sliderReleased(self):
         self.func(self.val)
+        self.echoVal(self.val)
+
+    def sliderMoved(self, value):
+        val = self.fval(value)
+        self.echoVal(val)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Wheel:

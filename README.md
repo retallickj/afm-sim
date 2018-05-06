@@ -69,13 +69,9 @@ specified path.
 
 The options panel offers a selection of parameter controls/views for debugging purposes. Details of slider controls can be found in the hover tooltips.
 
-<big>**NOTE: Currently, the sliders in the options panel only update the simulation values
-when the handle is released by the mouse. Using the keyboard or clicking elsewhere on the
-slider may not correctly update the values. Fix that soon.**</big> 
-
 |Field   |   Context
 | :---:   | ---
-|**DB-Beff**     | Local potential experience by targetted DB, see **Right Click** behaviour
+|**DB-Beff**     | Local potential experience by targeted DB, see **Right Click** behaviour
 |**Lifetime**    | Countdown for tracked DB. When the countdown runs out, the occupying charge will hop.
 |**\# electrons**| Current number of electrons in the surface DBs.
 |**Runtime Load**| Percentage of time between frames used for simulating the surface state. If greater than 100%, the animation is no longer running in real time.
