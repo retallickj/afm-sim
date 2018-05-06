@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # encoding: utf-8
 
 '''
@@ -63,7 +63,7 @@ class Logger(object):
         self.log_fn = os.path.join(self.root, self._log_file)
 
         # lineview name
-        self.viewerpath = os.path.join(os.path.dirname(__file__), 'lineview.py')
+        self.viewerpath = self.detectViewer()
 
         if not os.path.exists(self.root):
             print('Logger creating directory: {0}'.format(self.root))
@@ -86,6 +86,22 @@ class Logger(object):
         # close the Viewer process if open
         if self.P is not None:
             self.P.terminate()
+
+    def detectViewer(self):
+        '''Identify the viewer script.executable'''
+
+        root = os.path.join(os.path.dirname(__file__))
+
+        exe = os.path.join(root, 'lineview.exe')
+        if os.path.isfile(exe):
+            return [exe,]
+
+        py = os.path.join(root, 'lineview.py')
+        if os.path.isfile(py):
+            return ['python3', py]
+
+        return None
+
 
     def log(self, data):
         '''Log the given dictionary to the next file'''
@@ -112,11 +128,14 @@ class Logger(object):
 
     def startViewer(self):
         ''' '''
+        if self.viewerpath is None:
+            print('No Viewer path found')
+            return
         print('Starting Viewer')
         self.cleanup(silent=False)
         self.viewing = True
         self.view_fp = open(os.path.join(self.root, 'stdout'), 'a')
-        self.P = Popen(['python3', self.viewerpath, self.log_fn],
+        self.P = Popen(self.viewerpath+[self.log_fn,],
                     stdout=self.view_fp, stderr=self.view_fp)
 
 
