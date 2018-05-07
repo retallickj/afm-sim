@@ -56,8 +56,6 @@ class Logger(object):
     _log_file = 'log.dat'
     _temp_file = '.temp_log'
 
-    # TODO: start the Viewer on a key press
-
     def __init__(self, root, view=True):
         ''' '''
 
@@ -66,7 +64,8 @@ class Logger(object):
         self.log_fn = os.path.join(self.root, self._log_file)
 
         # lineview name
-        self.viewerpath = self.detectViewer()
+        viewer_path = os.path.join(os.path.dirname(__file__), 'lineview.py')
+        self.viewer = [sys.executable, viewer_path]
 
         if not os.path.exists(self.root):
             print('Logger creating directory: {0}'.format(self.root))
@@ -90,24 +89,6 @@ class Logger(object):
         if self.P is not None:
             self.P.terminate()
 
-    def detectViewer(self):
-        '''Identify the viewer script.executable'''
-
-        root = os.path.join(os.path.dirname(__file__))
-
-        if 'linux' not in sys.platform:
-            exe = os.path.join(root, 'lineview.exe')
-            if os.path.isfile(exe):
-                return [exe,]
-
-        py = os.path.join(root, 'lineview.py')
-        if os.path.isfile(py):
-            cmd = ['python',] if 'linux' in sys.platform else ['py',]
-            return cmd + [py,]
-
-        return None
-
-
     def log(self, data):
         '''Log the given dictionary to the next file'''
 
@@ -128,19 +109,13 @@ class Logger(object):
             except:
                 pass
 
-        # if self.view and not self.viewing:
-        #     self.startViewer()
-
     def startViewer(self):
         ''' '''
-        if self.viewerpath is None:
-            print('No Viewer path found')
-            return
         print('Starting Viewer')
         self.cleanup(silent=False)
         self.viewing = True
         self.view_fp = open(os.path.join(self.root, 'stdout'), 'a')
-        self.P = Popen(self.viewerpath+[self.log_fn,],
+        self.P = Popen(self.viewer+[self.log_fn,],
                     stdout=self.view_fp, stderr=self.view_fp)
 
 
