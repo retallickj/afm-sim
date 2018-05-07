@@ -95,7 +95,7 @@ class Logger(object):
 
         root = os.path.join(os.path.dirname(__file__))
 
-        if 'linux' in sys.platform:
+        if 'linux' not in sys.platform:
             exe = os.path.join(root, 'lineview.exe')
             if os.path.isfile(exe):
                 return [exe,]
