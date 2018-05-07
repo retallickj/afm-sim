@@ -16,11 +16,14 @@ from itertools import product
 import json
 from subprocess import Popen
 
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtSvg import QSvgGenerator
-from PyQt5.QtPrintSupport import QPrinter
+from pyqt_import import pyqt, import_pyqt_mod, import_pyqt_attr
+
+import_pyqt_mod('QtCore', 'QtGui', 'QtWidgets', wc=globals())
+
+# vector printing methods
+QSvgGenerator = import_pyqt_attr('QtSvg', 'QSvgGenerator')
+if pyqt == 'PyQt5':
+    QPrinter = import_pyqt_attr('QtPrintSupport', 'QPrinter')
 
 from hopper import HoppingModel
 
@@ -92,14 +95,15 @@ class Logger(object):
 
         root = os.path.join(os.path.dirname(__file__))
 
-        if sys.platform != 'linux':
+        if 'linux' in sys.platform:
             exe = os.path.join(root, 'lineview.exe')
             if os.path.isfile(exe):
                 return [exe,]
 
         py = os.path.join(root, 'lineview.py')
         if os.path.isfile(py):
-            return ['python3', py]
+            cmd = ['python',] if 'linux' in sys.platform else ['py',]
+            return cmd + [py,]
 
         return None
 
@@ -1451,6 +1455,9 @@ class MainWindow(QMainWindow):
     img_dir = os.path.join('.', 'img')  # directory for image saving
 
     use_svg = False  # use svg for vector graphics else pdf
+    if pyqt != 'PyQt5':
+        use_svg = True
+
     img_ext = { False: '.png',
                 True:  '.svg' if use_svg else '.pdf'}
 
@@ -1605,18 +1612,18 @@ class MainWindow(QMainWindow):
             self.ltime.setText('Lifetime: {0:.3f}'.format(
                                     self.model.lifetimes[self.dbn]))
 
-    def debug(self):
-
-        from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
-        import pdb, sys
-        pyqtRemoveInputHook()
-        try:
-            dbg = pdb.Pdb()
-            dbg.reset()
-            dbg.do_next(None)
-            dbg.interaction(sys._getframe().f_back, None)
-        finally:
-            pyqtRestoreInputHook()
+    # def debug(self):
+    #
+    #     from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
+    #     import pdb, sys
+    #     pyqtRemoveInputHook()
+    #     try:
+    #         dbg = pdb.Pdb()
+    #         dbg.reset()
+    #         dbg.do_next(None)
+    #         dbg.interaction(sys._getframe().f_back, None)
+    #     finally:
+    #         pyqtRestoreInputHook()
 
     def _screenshot(self, vector=False):
         fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')
@@ -1640,15 +1647,15 @@ class MainWindow(QMainWindow):
         elif key_check('zoom-'):
             zfact = 1-self.animator.zoom_rate
             self.animator.scale(zfact, zfact)
-        elif key_check('debug'):
-            self.debug()
+        # elif key_check('debug'):
+        #     self.debug()
         elif key_check('stopwatch'):
             self.animator.stopwatch()
         elif key_check('extents'):
             self.animator.zoomExtents()
         elif key_check('screenshot'):
             vector = bool(e.modifiers() & Qt.ShiftModifier)
-            fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')
+            fname = str(QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss'))
             fname = os.path.join(self.img_dir, fname+self.img_ext[vector])
             self.animator.screencapture(fname, vector)
         elif key_check('pause'):

@@ -1,5 +1,5 @@
 QMenuBar{
-  background-color: #60aaaaaa;
+  background-color: #aaaaaa;
 }
 
 QMenuBar::item:selected{
@@ -7,7 +7,7 @@ QMenuBar::item:selected{
 }
 
 QMenu{
-  background-color: #60aaaaaa;
+  background-color: #aaaaaa;
 }
 
 QMenuBar::item:selected{
