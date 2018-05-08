@@ -81,7 +81,7 @@ bool AFMMarcus::runSim()
     std::vector<std::string> python_commands;
     python_commands.append("python");
     python_commands.append("py -3");
-    python_commands.append("C:\Windows\py.exe -3")
+    python_commands.append("C:\\Windows\\py.exe -3")
     std::string python_command;
     for (std::string cmd : python_commands) {
       if (system(cmd.c_str())) {
