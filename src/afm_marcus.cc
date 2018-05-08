@@ -79,9 +79,9 @@ bool AFMMarcus::runSim()
   #if (defined(_WIN32) || defined(_WIN64))
     // check multiple locations for the existence of Python
     std::vector<std::string> python_commands;
-    python_commands.append("python");
-    python_commands.append("py -3");
-    python_commands.append("C:\\Windows\\py.exe -3")
+    python_commands.push_back("python");
+    python_commands.push_back("py -3");
+    python_commands.push_back("C:\\Windows\\py.exe -3")
     std::string python_command;
     for (std::string cmd : python_commands) {
       if (system(cmd.c_str())) {
