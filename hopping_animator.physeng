@@ -32,5 +32,11 @@
         <label>Number of electrons</label>
         <tip>The number of electrons to use for the simulation, set to -1 for the simulator to automatically determine.</tip>
       </num_electrons>
+      <python_interpreter>
+        <T>string</T>
+        <val></val>
+        <label>Python interpreter (Windows)</label>
+        <tip>Command to call a specific Python interpreter, leave blank otherwise. The script tries to call "C:\Windows\py.exe -3" and "python" in that order by default, supply your own command if you have a special Python setup (e.g. Anaconda).</tip>
+      </python_interpreter>
     </sim_params>
 </physeng>
