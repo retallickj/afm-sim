@@ -61,7 +61,7 @@ bool AFMMarcus::runSim()
 
   std::cout << "Calling Python as a system command..." << std::endl;
   std::string python_command;
-  if (!problem.getParameter("python_interpreter").isEmpty())
+  if (!problem.getParameter("python_interpreter").empty())
     python_command = problem.getParameter("python_interpreter");
   else if (!boost::filesystem::exists("C:\\Windows\\py.exe -3"))
     python_command = "C:\\Windows\\py.exe -3";
