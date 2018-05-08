@@ -77,8 +77,22 @@ bool AFMMarcus::runSim()
   system(command.c_str());*/
 
   #if (defined(_WIN32) || defined(_WIN64))
+    // check multiple locations for the existence of Python
+    std::vector<std::string> python_commands;
+    python_commands.append("python");
+    python_commands.append("py -3");
+    python_commands.append("C:\Windows\py.exe -3")
+    std::string python_command;
+    for (std::string cmd : python_commands) {
+      if (system(cmd.c_str())) {
+        python_command = cmd;
+        break;
+      }
+    }
+
     // run the external program through the Windows shell
-    std::string command = "\"py -3 \"" + scriptPath() + "\" ";
+    std::string command = "\"" + python_command + " \"" + scriptPath() + "\" ";
+    //std::string command = "\"py -3 \"" + scriptPath() + "\" ";
     command += "-i \"" + script_problem_path + "\" "; // problem path for the script to read
     command += "-o \"" + script_result_path + "\"\"";  // result path that the script writes to
     std::cout << "Calling command: " << command << std::endl;
