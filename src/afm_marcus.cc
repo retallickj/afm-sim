@@ -77,18 +77,11 @@ bool AFMMarcus::runSim()
   system(command.c_str());*/
 
   #if (defined(_WIN32) || defined(_WIN64))
-    // check multiple locations for the existence of Python
-    std::vector<std::string> python_commands;
-    python_commands.push_back("python");
-    python_commands.push_back("py -3");
-    python_commands.push_back("C:\\Windows\\py.exe -3");
     std::string python_command;
-    for (std::string cmd : python_commands) {
-      if (system(cmd.c_str())) {
-        python_command = cmd;
-        break;
-      }
-    }
+    if (!boost::filesystem::exists("C:\\Windows\\py.exe -3"))
+      python_command = "C:\\Windows\\py.exe -3";
+    else
+      python_command = "python";
 
     // run the external program through the Windows shell
     std::string command = "\"" + python_command + " \"" + scriptPath() + "\" ";

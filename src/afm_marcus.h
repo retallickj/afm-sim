@@ -34,7 +34,7 @@ namespace phys {
     // Convert between angstrom (x,y) and lattice unit (x,y,b)
     std::tuple<int,int,int> angstrom2LatticeUnit(float x, float y);
     std::pair<float,float> latticeUnit2Angstrom(int x, int y, int b);
-    
+
 
     // VARS
     std::vector<std::tuple<int,int,int>> db_locs_lu;   // DB locations in lattice unit (x,y,b)
