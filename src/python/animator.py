@@ -33,6 +33,7 @@ from timeit import default_timer as wall
 _SF = 50     # scale factor
 _hmin = 25
 
+_root = os.path.dirname(__file__)   # parent directory
 
 def loadQSS(fname):
     with open(fname, 'r') as fp:
@@ -439,7 +440,7 @@ class FieldSlider(QHBoxLayout):
 
     def setValue(self, val):
         self.val = val
-        self.setValue(round((val-self.lo)/self.inc))
+        self.slider.setValue(round((val-self.lo)/self.inc))
 
     def setToolTip(self, txt):
         self.txt.setToolTip(txt)
@@ -567,6 +568,10 @@ class DockWidget(QDockWidget):
         self.setWidget(scroll)
 
         self.panels = {}
+        self.cache = {} # nested dictionary structure holding values for caching
+
+        self._cache = self.cache
+
         self.target = self.vbox
 
         self.hide()
@@ -583,20 +588,29 @@ class DockWidget(QDockWidget):
             raise KeyError('Panel key already exists')
 
         self.panels[key] = Panel(txt)
+        self.cache[key] = {}
+
         self.addSeparator()
         self.vbox.addLayout(self.panels[key])
-        self.target = self.panels[key].vbox
+        self.setPanel(key)
 
     def setPanel(self, key):
         '''Change the target panel'''
         if key in self.panels:
             self.target = self.panels[key].vbox
+            self._cache = self.cache[key]
         else:
             self.target = self.vbox
+            self._cache = self.cache
 
     def initPanels(self):
         for key, panel in self.panels.items():
             panel.toggle()
+
+    def linkCache(self, key, fset, fget):
+        '''Link setters/getters to a key in the cache'''
+
+        self._cache[key] = (fset, fget)
 
     def addSeparator(self):
         '''Add a horizonal separator line to the dock layout'''
@@ -612,10 +626,11 @@ class DockWidget(QDockWidget):
         label = QLabel(txt)
         self.target.addWidget(label)
 
-    def addSlider(self, txt, lo, hi, inc, val, func, ttip=''):
+    def addSlider(self, key, txt, lo, hi, inc, val, func, ttip=''):
         '''Add a slider controlled parameter to the Dock Widget
 
         inputs:
+            key     : key for parametre in the local cache
             txt     : Label of the slider
             lo      : Lowest value of the slider
             hi      : Highest value of the slider
@@ -627,6 +642,8 @@ class DockWidget(QDockWidget):
         slider.setBounds(lo, hi, inc, val)
         slider.setToolTip(ttip)
         slider.func = func
+
+        self.linkCache(key, slider.setValue, lambda : getattr(slider, 'val'))
 
         self.target.addLayout(slider)
         return slider
@@ -653,6 +670,44 @@ class DockWidget(QDockWidget):
 
     def addLayout(self, layout, stretch=-1):
         self.target.addLayout(layout, stretch=stretch)
+
+    def loadOptions(self, fname):
+        ''' '''
+
+        with open(fname, 'r') as fp:
+            data = json.load(fp)
+
+        def parse_data(root, d, k0=''):
+            for k,v in root.items():
+                if isinstance(v, dict):
+                    parse_data(v, d[k], k0+'/'+k)
+                else:
+                    if k in d:
+                        d[k][0](v)
+                    else:
+                        print('Load Options: key mismatch {0}:{1}'.format(k0,k))
+
+        parse_data(data, self.cache)
+
+    def saveOptions(self, fname):
+        ''''''
+
+        def parse_cache(root):
+            d = {}
+            for k,v in root.items():
+                if isinstance(v, dict):
+                    d[k] = parse_cache(v)
+                else:
+                    d[k] = v[1]()
+            return d
+
+        data = parse_cache(self.cache)
+        with open(fname, 'w') as fp:
+            json.dump(data, fp, indent=1)
+
+
+
+
 
 
 
@@ -807,7 +862,7 @@ class HoppingAnimator(QGraphicsView):
 
         val = np.log10(self.rate)
         func = lambda v: self.setPar(self, 'rate', 10**v, tc=2)
-        dock.addSlider('log(rate)', -3., 3., .5, val, func,
+        dock.addSlider('rate', 'log(rate)', -3., 3., .5, val, func,
             'Speed-up factor for the animation.')
 
         # hopping controls
@@ -816,7 +871,7 @@ class HoppingAnimator(QGraphicsView):
         if self.model.fixed_pop:
             val = self.model.Nel
             func = lambda N: self.setParFunc(self.model.fixElectronCount, N)
-            dock.addSlider('N', 0, self.model.N, 1, val, func,
+            dock.addSlider('Nel', 'N', 0, self.model.N, 1, val, func,
             'Number of electrons in the surface.')
 
         # hopping model parameters
@@ -825,29 +880,29 @@ class HoppingAnimator(QGraphicsView):
 
         val = mdl.dlamb
         func = lambda v: self.setPar(mdl, 'dlamb', v)
-        dock.addSlider('lambda', 0, 0.2, .001, val, func,
+        dock.addSlider('lambda', 'lambda', 0, 0.2, .001, val, func,
             'Self Trapping Energy')
 
         val = np.log(mdl.fact)
         func = lambda v: self.setParFunc(mdl.setPrefactor, 10**v)
-        dock.addSlider('factor', -2, 2, .1, val, func,
+        dock.addSlider('factor', 'factor', -2, 2, .1, val, func,
             'Order scaling for the intrinsic hopping rates')
 
         val = mdl.hop_alph
         func = lambda v: self.setParFunc(mdl.setAttenuation, v)
-        dock.addSlider('alpha', 1, 1e2, .1, val, func,
+        dock.addSlider('alpha', 'alpha', 1, 1e2, .1, val, func,
             'Attenuation length, in angstroms')
 
         val = self.model.hop_range
         func = lambda v: self.setParFunc(
             lambda x: self.model.updateFRHPars(x, None), v)
-        dock.addSlider('FRH: hop', 10, 100, 2, val, func,
+        dock.addSlider('frh-hop', 'FRH: hop', 10, 100, 2, val, func,
             'Maximum range for surface hopping, in angstroms')
 
         val = self.model.cohop_range
         func = lambda v: self.setParFunc(
             lambda x: self.model.updateFRHPars(None, x), v)
-        dock.addSlider('FRH: cohop', 10, 50, 2, val, func,
+        dock.addSlider('frh-cohop', 'FRH: cohop', 10, 50, 2, val, func,
             'Maximum range between surface cohopping sources, in angstroms')
 
 
@@ -862,12 +917,12 @@ class HoppingAnimator(QGraphicsView):
             #     'Self-Trapping energy for surface-bulk hopping')
 
             val, func = self.bulk.mu, lambda v: self.setPar(self.bulk, 'mu', v)
-            dock.addSlider('mu', 0., .5, .01, val, func,
+            dock.addSlider('mu', 'mu', 0., .5, .01, val, func,
                 'Chemical Potential: difference between Fermi and intrinsic DB- levels')
 
             val = np.log10(self.bulk.nu)
             func = lambda v: self.setPar(self.bulk, 'nu', 10**v)
-            dock.addSlider('log(nu)', -1, 5, .5, val, func,
+            dock.addSlider('nu', 'log(nu)', -1, 5, .5, val, func,
                 'Maximum hopping rate between the bulk and the surface')
 
         # tip controls
@@ -879,11 +934,11 @@ class HoppingAnimator(QGraphicsView):
                 'Toggle the tip')
 
             val, func = self.tip.scale, lambda v: self.setPar(self.tip, 'scale', v)
-            dock.addSlider('scale', 0., 1., .01, val, func,
+            dock.addSlider('scale', 'scale', 0., 1., .01, val, func,
                 'Attenuation for tip contribution to the energy calculation')
 
             val, func = self.tip.epsr, lambda v: self.setPar(self.tip, 'epsr', v)
-            dock.addSlider('epsr', 1., 10., .2, val, func,
+            dock.addSlider('epsr', 'epsr', 1., 10., .2, val, func,
                 'Relative permittivity for image charge interactions')
 
             # val, func = self.tip.lamb, lambda v: self.setPar(self.tip, 'lamb', v)
@@ -903,23 +958,23 @@ class HoppingAnimator(QGraphicsView):
 
             val = 1e3*self.tip.tipH
             func = lambda h: self.setParFunc(self.tip.setHeight, 1e-3*h)
-            dock.addSlider('H', 100, 1000, 10, val, func,
+            dock.addSlider('H', 'H', 100, 1000, 10, val, func,
                 'Tip height in pm')
 
             val = self.tip.tipR1
             func = lambda R: self.setParFunc(
                         lambda r: self.tip.setRadius(icibb=r), R)
-            dock.addSlider('ICIBB R', 1, 50, 1, val, func,
+            dock.addSlider('r-icibb', 'ICIBB R', 1, 50, 1, val, func,
                 'Tip radius in nm for ICIBB')
 
             val = self.tip.tipR2
             func = lambda R: self.setParFunc(
                         lambda r: self.tip.setRadius(tibb=r), R)
-            dock.addSlider('TIBB R', 1, 200, 1, val, func,
+            dock.addSlider('r-tibb', 'TIBB R', 1, 200, 1, val, func,
                 'Tip radius in nm for TIBB')
 
             val, func = self.tip.rate, lambda v: self.setPar(self.tip, 'rate', v)
-            dock.addSlider('rate', 1., 50., .5, val, func,
+            dock.addSlider('rate', 'rate', 1., 50., .5, val, func,
                 'Tip scan rate in nm/s')
 
         # functionality
@@ -970,20 +1025,20 @@ class HoppingAnimator(QGraphicsView):
 
             val = np.log10(self.clock.length)-1
             func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
-            dock.addSlider('log(length)', 0, 3, .1, val, func,
+            dock.addSlider('length', 'log(length)', 0, 3, .1, val, func,
                 'Wavelength, in nm')
 
             val = np.log10(self.clock.freq)
             func = lambda v: self.setPar(self.clock, 'freq', 10**v)
-            dock.addSlider('Frequency', -2, 3, .1, val, func,
+            dock.addSlider('freq', 'Frequency', -2, 3, .1, val, func,
                 'Frequency, in Hz')
 
             val, func = self.clock.wf_A, lambda v: self.setPar(self.clock, 'wf_A', v)
-            dock.addSlider('Amplitude', 0, .5, .01, val, func,
+            dock.addSlider('amp', 'Amplitude', 0, .5, .01, val, func,
                 'Amplitude, in eV')
 
             val, func = self.clock.wf_0, lambda v: self.setPar(self.clock, 'wf_0', v)
-            dock.addSlider('Offset', -.2, .2, .01, val, func,
+            dock.addSlider('offset', 'Offset', -.2, .2, .01, val, func,
                 'Offset, in eV')
 
         dock.initPanels()
@@ -1468,7 +1523,8 @@ class MainWindow(QMainWindow):
 
     ZOOM = .1
 
-    img_dir = os.path.join('.', 'img')  # directory for image saving
+    img_dir = os.path.join(_root, 'img')    # directory for image saving
+    opt_dir = os.path.join(_root, 'cache')  # directory for cached settings
 
     use_svg = False  # use svg for vector graphics else pdf
     if pyqt != 'PyQt5':
@@ -1546,6 +1602,9 @@ class MainWindow(QMainWindow):
         filemenu.addAction('&Quit', self.quit)
 
         controlmenu.addAction('&Options', self.toggleOptions)
+        controlmenu.addAction('&Save Options', self.saveOptions)
+        controlmenu.addAction('&Load Options', self.loadOptions)
+        controlmenu.addSeparator()
         controlmenu.addAction('&Pause/Resume', self.animator.pause)
 
         viewmenu.addAction('&Zoom Extents', self.animator.zoomExtents)
@@ -1575,6 +1634,40 @@ class MainWindow(QMainWindow):
         self.animator.passControls(self.dock)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+
+    def saveOptions(self):
+        ''' '''
+
+        fname, _ = QFileDialog.getSaveFileName(self, '&Save Options...',
+                    self.opt_dir, 'JSON (*.json)')
+        if not fname:
+            return
+
+        # assert json extention
+        fname = os.path.splitext(fname)[0] + '.json'
+
+        self.opt_dir = self.checkDir(os.path.dirname(fname))
+        self.dock.saveOptions(fname)
+
+    def loadOptions(self):
+        ''' '''
+
+        fname, _ = QFileDialog.getOpenFileName(self, '&Load Options...',
+                    self.opt_dir, 'JSON (*.json)')
+        if not fname:
+            return
+
+        print(fname)
+
+        self.opt_dir = self.checkDir(os.path.dirname(fname))
+        self.dock.loadOptions(fname)
+
+    def checkDir(self, direc):
+
+        if not os.path.isdir(direc):
+            os.makedirs(direc)
+
+        return direc
 
     def setupShortcuts(self):
 
