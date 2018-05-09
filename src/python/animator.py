@@ -283,6 +283,34 @@ class DB(QGraphicsEllipseItem):
         return d
 
 
+class PathNode(QGraphicsEllipseItem):
+
+    edge = QPen(Qt.NoPen)
+    fill = QBrush(Qt.magenta)
+
+    D = .4*DB.D
+    dd = .5*D
+
+    def __init__(self, x, y, parent=None):
+        '''Initialise a Path node at the given pixel position'''
+        super(PathNode, self).__init__(x-self.dd, y-self.dd,
+                                            self.D, self.D, parent=parent)
+        self.xp, self.yp = x, y
+        self.setZValue(3)
+        self.setPen(self.edge)
+        self.setBrush(self.fill)
+        self.show()
+
+    def getPos(self, nm=True):
+        f = .1 if nm else 1.
+        return f*self.xp/_SF, f*self.yp/_SF
+
+    def setCapture(self):
+        self.hide()
+
+    def unsetCapture(self):
+        self.show()
+
 
 class SnapTarget(QGraphicsEllipseItem):
 
@@ -1066,6 +1094,7 @@ class HoppingAnimator(QGraphicsView):
     def setTipTarget(self, x, y):
         if self.tip is not None and self.tip.enabled:
             self.tip.setTarget(.1*x, .1*y)
+            self.clearPath()
             self.tick()
 
     def pause(self):
@@ -1299,6 +1328,16 @@ class HoppingAnimator(QGraphicsView):
 
         self.logger.log(out)
 
+    def addToPath(self, x, y):
+
+        node = PathNode(x, y)
+        self.scene.addItem(node)
+        self.path.append(node)
+
+    def clearPath(self):
+        while self.path:
+            self.scene.removeItem(self.path.pop())
+
     def mousePressEvent(self, e):
         super(HoppingAnimator, self).mousePressEvent(e)
 
@@ -1313,11 +1352,11 @@ class HoppingAnimator(QGraphicsView):
             # path lists
             if self.tip is not None and self.tip.enabled:
                 if e.modifiers() & Qt.ShiftModifier:
-                    pos, dp = self.mapToScene(e.pos())/_SF, .5*self.tip_item.D/_SF
+                    ppos, dp = self.mapToScene(e.pos()), .5*self.tip_item.D
                     if e.modifiers() & Qt.ControlModifier:
-                        self.path.append((.1*(pos.x()-dp), .1*(pos.y()-dp)))
+                        self.addToPath(ppos.x(), ppos.y())
                     else:
-                        self.setTipTarget(pos.x()-dp, pos.y()-dp)
+                        self.setTipTarget((ppos.x()-dp)/_SF, (ppos.y()-dp)/_SF)
                     e.accept()
                     return
 
@@ -1359,8 +1398,10 @@ class HoppingAnimator(QGraphicsView):
     def keyReleaseEvent(self, e):
         if e.key() == Qt.Key_Control:
             if self.path:
-                self.tip.setScan(self.path, loop=True)
-                self.path = []
+                dp = .05*self.tip_item.D/_SF
+                path = [node.getPos() for node in self.path]
+                self.tip.setScan([(x-dp, y-dp) for x,y in path], loop=True)
+                self.clearPath()
                 self.tick()
 
     def wheelEvent(self, e):

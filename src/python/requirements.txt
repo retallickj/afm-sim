@@ -1,0 +1,7 @@
+testresources
+numpy
+scipy
+matplotlib
+pyqt4; python_version < '3.5'
+sip; python_version >= '3.5'
+pyqt5; python_version >= '3.5'

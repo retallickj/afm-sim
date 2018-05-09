@@ -135,13 +135,13 @@ class TipModel(Channel):
         self.path = [(x,y) for x,y in path]
         if rate is not None:
             self.rate = float(rate)
-        self.loop = bool(loop)
+        self.loop = bool(loop) if len(self.path)>1 else False
         self._update_scanrates(*self.path[0])
 
     def setTarget(self, x, y, rate=None):
         self.path = [(x,y)]
         if rate is not None:
-            self.rate = rate
+            self.rate = float(rate)
         self.loop = False
         self._update_scanrates(*self.path[0])
 
