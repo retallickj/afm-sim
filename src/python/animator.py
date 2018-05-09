@@ -1527,6 +1527,8 @@ class MainWindow(QMainWindow):
     opt_dir = os.path.join(_root, 'cache')  # directory for cached settings
 
     use_svg = False  # use svg for vector graphics else pdf
+
+    # QPrinter setup currently not working in PyQt4, no .pdf support
     if pyqt != 'PyQt5':
         use_svg = True
 
