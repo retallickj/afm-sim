@@ -29,14 +29,10 @@ void PhysicsEngine::readDBLocFromProblem()
   std::cout << "Grab all physical locations..." << std::endl;
   n_dbs = 0;
   for (auto db : problem) {
-    if (db->elec != 1) {
-      db_locs.push_back(std::make_pair(db->x, db->y));
-      n_dbs++;
-      std::cout << "DB loc: x=" << db_locs.back().first
-          << ", y=" << db_locs.back().second << std::endl;
-    } else {
-      fixed_charges.push_back(std::make_tuple(db->x, db->y, db->elec));
-    }
+    db_locs.push_back(std::make_pair(db->x, db->y));
+    n_dbs++;
+    std::cout << "DB loc: x=" << db_locs.back().first
+        << ", y=" << db_locs.back().second << std::endl;
   }
   std::cout << "Free dbs, n_dbs=" << n_dbs << std::endl << std::endl;
 }
