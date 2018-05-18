@@ -17,7 +17,7 @@ Problem::Problem(const std::string &fname)
   readProblem(fname);
 }
 
-void Problem::initProblem() 
+void Problem::initProblem()
 {
   db_tree = std::make_shared<Problem::Aggregate>();
 }
@@ -212,17 +212,16 @@ bool Problem::readItemTree(const bpt::ptree &subtree, const std::shared_ptr<Aggr
 
 bool Problem::readDBDot(const bpt::ptree &subtree, const std::shared_ptr<Aggregate> &agg_parent)
 {
-  float x, y, elec;
+  float x, y;
 
   // read x and y from XML stream
-  elec = subtree.get<float>("elec");
   x = subtree.get<float>("physloc.<xmlattr>.x");
   y = subtree.get<float>("physloc.<xmlattr>.y");
 
-  agg_parent->dbs.push_back(std::make_shared<DBDot>(x,y,elec));
+  agg_parent->dbs.push_back(std::make_shared<DBDot>(x,y));
 
-  std::cout << "DBDot created with x=" << agg_parent->dbs.back()->x << ", y=" << agg_parent->dbs.back()->y << ", elec=" << agg_parent->dbs.back()->elec << std::endl;
-  
+  std::cout << "DBDot created with x=" << agg_parent->dbs.back()->x << ", y=" << agg_parent->dbs.back()->y << std::endl;
+
   return true;
 }
 
