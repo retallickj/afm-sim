@@ -1,5 +1,8 @@
 *.pyc
 *.pdf
 .*.swp
+*.so
+*.pyd
+siqadconn.py
 results.xml
 test.xml
