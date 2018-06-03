@@ -57,9 +57,6 @@ class DBSimConnector:
     def initProblem(self):
         self.sqconn = siqadconn.SiQADConnector("AFMMarcus", self.args.in_file,
             self.args.out_file)
-        self.sqconn.setExpectDB(True)
-        self.sqconn.readProblem()
-        self.sqconn.initCollections()
 
         # retrieve DBs and convert to a format that hopping model takes
         for db in self.sqconn.dbCollection():
