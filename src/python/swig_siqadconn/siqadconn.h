@@ -1,7 +1,7 @@
 // @file:     siqadconn.h
 // @author:   Samuel
 // @created:  2017.08.23
-// @editted:  2018.06.02 - Samuel
+// @editted:  2018.06.03 - Samuel
 // @license:  GNU LGPL v3
 //
 // @desc:     Convenient functions for interacting with SiQAD including
@@ -23,35 +23,131 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <string>
 #include <vector>
-#include <boost/circular_buffer.hpp>
 #include <ctime>
 #include <chrono>
 
 namespace phys{
   namespace bpt = boost::property_tree;
 
-  // Layer
+  // forward declaration
   struct Layer;
-
-  // Electrode related
-  struct Electrode;
-  class ElectrodeCollection;
-
-  // DBDot related
   struct DBDot;
+  class DBIterator;
   class DBCollection;
-
-  // Aggregate
+  struct Electrode;
+  class ElecIterator;
+  class ElectrodeCollection;
   struct Aggregate;
 
-  // Iterators
-  class ElecIterator;
-  class DBIterator;
-
-  // ITERATOR
   typedef std::vector<std::shared_ptr<DBDot>>::const_iterator DBIter;
   typedef std::vector<std::shared_ptr<Electrode>>::const_iterator ElecIter;
   typedef std::vector<std::shared_ptr<Aggregate>>::const_iterator AggIter;
+
+  // SiQAD connector class
+  class SiQADConnector
+  {
+  public:
+    // CONSTRUCTOR
+    SiQADConnector(const std::string &eng_name, const std::string &input_path,
+        const std::string &output_path);
+    // DESTRUCTOR
+    ~SiQADConnector(){writeResultsXml();}
+
+    // Write results to the provided output_path
+    void writeResultsXml();
+
+
+    // EXPORTING
+
+    // Set export type and variable
+    void setExport(std::string type, std::vector< std::pair< std::string, std::string > > &data_in);
+    void setExport(std::string type, std::vector< std::vector< std::string > > &data_in);
+
+
+    // SIMULATION PARAMETERS
+
+    // Checks if a parameter with the given key exists.
+    bool parameterExists(const std::string &key) {return sim_params.find(key) != sim_params.end();}
+
+    // Get the parameter with the given key.
+    std::string getParameter(const std::string &key) {return sim_params.find(key) != sim_params.end() ? sim_params.at(key) : "";}
+
+
+    // ITERABLE COLLECTIONS
+
+    // Return pointer to DB collection, which allows iteration through DBs
+    // across all aggregate levels.
+    DBCollection* dbCollection() {return db_col;}
+
+    // Return pointer to Electrode collection, which allows iteration through
+    // electrodes across all electrode layers.
+    ElectrodeCollection* electrodeCollection() {return elec_col;}
+
+
+    // Misc Accessors
+    std::string inputPath(){return input_path;}
+
+    void setOutputPath(std::string path){output_path = path;}
+    std::string outputPath(){return output_path;}
+
+  private:
+
+    // Read the problem file
+    void readProblem(const std::string &path);
+
+    // Read program properties
+    void readProgramProp(const bpt::ptree &);
+
+    // Read layer properties
+    void readLayers(const bpt::ptree &);
+    void readLayerProp(const bpt::ptree &);
+
+    // Read simulation parameters
+    void readSimulationParam(const bpt::ptree &);
+
+    // Read design
+    void readDesign(const bpt::ptree &, const std::shared_ptr<Aggregate> &);
+    void readItemTree(const bpt::ptree &, const std::shared_ptr<Aggregate> &);
+    void readElectrode(const bpt::ptree &, const std::shared_ptr<Aggregate> &);
+    void readDBDot(const bpt::ptree &, const std::shared_ptr<Aggregate> &);
+
+    // Generate property trees for writing
+    bpt::ptree engInfoPropertyTree();
+    bpt::ptree simParamsPropertyTree();
+    bpt::ptree dbLocPropertyTree();
+    bpt::ptree dbChargePropertyTree();
+    bpt::ptree electrodePropertyTree();
+    bpt::ptree potentialPropertyTree();
+    bpt::ptree dbPotentialPropertyTree(); // TODO fix up this function, a lot of redundant information
+
+    // Engine properties
+    std::string eng_name;                 // name of simulation engine
+    std::string input_path;               // path to problem file
+    std::string output_path;              // path to result export
+
+    // Iterable collections
+    ElectrodeCollection* elec_col;
+    DBCollection* db_col;
+
+    // Retrieved items and properties
+    std::map<std::string, std::string> program_props; // SiQAD properties
+    std::shared_ptr<Aggregate> item_tree;             // all physical items
+    std::vector<Layer> layers;                        // layers
+    std::map<std::string, std::string> sim_params;    // simulation parameters
+
+    // Exportable data
+    std::vector<std::vector<std::string>> pot_data;
+    std::vector<std::vector<std::string>> db_pot_data;
+    std::vector<std::vector<std::string>> elec_data;
+    std::vector<std::pair<std::string, std::string>> dbl_data;        // pair of location x and y
+    std::vector<std::pair<std::string, std::string>> db_charge_data;  // pair of elec dist and energy
+
+    // Runtime information
+    int return_code=0;
+    std::chrono::time_point<std::chrono::system_clock> start_time;
+    std::chrono::time_point<std::chrono::system_clock> end_time;
+  };
+
 
   // layer struct
   struct Layer {
@@ -166,122 +262,6 @@ namespace phys{
     int size(); // returns the number of contained elecs, including those in children aggs
   };
 
-  class SiQADConnector
-  {
-  public:
-    // CONSTRUCTOR
-    SiQADConnector(const std::string &eng_name_in, const std::string &input_path_in, const std::string &output_path_in);
-    // DESTRUCTOR
-    ~SiQADConnector(){writeResultsXml();}
-
-    void writeResultsXml();
-
-    // Initializers
-    void initProblem();
-    void initCollections();
-    // File Handling
-    void readProblem();
-
-    // Accessors
-    //Input flags
-    void setExpectElectrode(bool set_val){expect_electrode = set_val;}
-    void setExpectDB(bool set_val){expect_db = set_val;}
-    void setExpectAFMPath(bool set_val){expect_afm_path = set_val;}
-
-    //Set output flags
-    void setExportElecPotential(bool set_val){export_elec_potential = set_val;}
-    void setExportDBChargeConfig(bool set_val){export_db_charge_config = set_val;}
-    void setExportElectrode(bool set_val){export_electrode = set_val;}
-    void setExportDBLoc(bool set_val){export_db_loc = set_val;}
-    void setExportDBPot(bool set_val){export_db_pot = set_val;}
-
-    //generalosed setExport
-    void setExport(std::string key, std::vector< std::pair< std::string, std::string > > &data_in);
-    void setExport(std::string key, std::vector< std::vector< std::string > > &data_in);
-
-    //set vector of strings as potential data
-    void setElecPotentialData(std::vector<std::vector<std::string>> &data_in);
-    //set vector of strings as electrode data
-    void setElectrodeData(std::vector<std::vector<std::string>> &data_in);
-    //set vector of strings as db data
-    void setDBLocData(std::vector< std::pair< std::string, std::string > > &data_in);
-    //set vector of strings as db data
-    void setDBPotData(std::vector< std::vector< std::string > > &data_in);
-    //set vector of strings as db data
-    void setDBChargeData(std::vector<std::pair<std::string, std::string> > &data_in);
-
-    //! Checks if a parameter exists given the parameter key.
-    bool parameterExists(const std::string &key) {return sim_params.find(key) != sim_params.end();}
-
-    //! Getter for a parameter, given a parameter key.
-    std::string getParameter(const std::string &key) {return sim_params.find(key) != sim_params.end() ? sim_params.at(key) : "";}
-    void setOutputPath(std::string path){output_path = path;}
-    std::string getOutputPath(void){return output_path;}
-    std::string getInputPath(void){return input_path;}
-
-    //! Return pointer to DB collection, which allows iteration through DBs
-    //! across all aggregate levels.
-    DBCollection* dbCollection() {return db_col;}
-
-    //! Return pointer to Electrode collection, which allows iteration through
-    //! electrodes across all electrode layers.
-
-    //simulation inputs and outputs
-    std::vector<std::vector<std::string>> pot_data;
-    std::vector<std::vector<std::string>> db_pot_data;
-    std::vector<std::vector<std::string>> elec_data;
-    std::vector<std::pair<std::string, std::string>> dbl_data;
-    std::vector<std::pair<std::string, std::string>> db_charge_data;
-    std::vector<std::pair<float,float>> db_locs;
-    boost::circular_buffer<std::vector<int>> db_charges;
-
-
-
-  private:
-
-    // Read program properties
-    void readProgramProp(const bpt::ptree &);
-
-    // Read layer properties
-    void readLayers(const bpt::ptree &);
-    void readLayerProp(const bpt::ptree &);
-
-    // Read simulation parameters
-    void readSimulationParam(const bpt::ptree &);
-
-    // Read design
-    void readDesign(const bpt::ptree &subtree, const std::shared_ptr<Aggregate> &agg_parent);
-    void readItemTree(const bpt::ptree &subtree, const std::shared_ptr<Aggregate> &agg_parent);
-    void readElectrode(const bpt::ptree &subtree, const std::shared_ptr<Aggregate> &agg_parent);
-    void readDBDot(const bpt::ptree &subtree, const std::shared_ptr<Aggregate> &agg_parent);
-
-    // Iterable collections
-    ElectrodeCollection* elec_col;
-    DBCollection* db_col;
-
-    // Retrieved items and properties
-    std::map<std::string, std::string> program_props; // SiQAD properties
-    std::shared_ptr<Aggregate> item_tree;             // all physical items
-    std::vector<Layer> layers;                        // layers
-    std::map<std::string, std::string> sim_params;    // simulation parameters
-
-    // Engine properties
-    std::string eng_name;                 // name of simulation engine
-    std::string input_path;               // path to problem file
-    std::string output_path;              // path to result export
-
-    bool expect_electrode;
-    bool expect_db;
-    bool expect_afm_path;
-    bool export_elec_potential;
-    bool export_db_charge_config;
-    bool export_electrode;
-    bool export_db_loc;
-    bool export_db_pot;
-    int return_code;
-    std::chrono::time_point<std::chrono::system_clock> start_time;
-    std::chrono::time_point<std::chrono::system_clock> end_time;
-  };
 
 }//end namespace phys
 
