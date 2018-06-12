@@ -34,9 +34,9 @@ class DBSimConnector:
     afmnodes = []   # list of tuples containing all afmnodes, (x, y, z)
 
     def parseCmlArguments(self):
-        parser = ArgumentParser(description="This script takes the problem file \
-                and runs the AFM tip simulation with the AFM path and DB locations \
-                given in that file.")
+        parser = ArgumentParser(description="This script takes the problem file "
+                "and runs the AFM tip simulation with the AFM path and DB locations "
+                "given in that file.")
         #parser.add_argument("-i", "--input", dest="in_file", required=True,
         parser.add_argument(dest="in_file", type=self.fileMustExist,
                 help="Path to the problem file.",
