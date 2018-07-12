@@ -1,4 +1,3 @@
-testresources
 numpy
 scipy
 matplotlib

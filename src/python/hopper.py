@@ -47,7 +47,7 @@ class HoppingModel:
     q0      = 1.602e-19     # C
     kb      = 8.617e-05     # eV/K
     T       = 4.0           # system temperature, K
-    epsr    = 6.35          # relative permittivity
+    epsr    = 5.6          # relative permittivity
 
     Kc = 1e10*q0/(4*np.pi*epsr*eps0)    # Coulomb strength, eV.angstrom
 

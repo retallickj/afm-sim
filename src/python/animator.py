@@ -10,11 +10,12 @@ __copyright__   = 'MIT License'
 __version__     = '1.2'
 __date__        = '2018-03-26'  # last update
 
-import shutil, os, sys
+import shutil, os, sys, shutil
 import numpy as np
 from itertools import product
 import json
 from subprocess import Popen
+import tempfile
 
 from pyqt_import import pyqt, import_pyqt_mod, import_pyqt_attr
 
@@ -61,16 +62,16 @@ class Logger(object):
         ''' '''
 
         print('Logger started')
-        self.root = os.path.abspath(root)
+        self.root = root
         self.log_fn = os.path.join(self.root, self._log_file)
-
-        # lineview name
-        viewer_path = os.path.join(os.path.dirname(__file__), 'lineview.py')
-        self.viewer = [sys.executable, viewer_path]
 
         if not os.path.exists(self.root):
             print('Logger creating directory: {0}'.format(self.root))
             os.makedirs(self.root)
+
+        # lineview name
+        viewer_path = os.path.join(os.path.dirname(__file__), 'lineview.py')
+        self.viewer = [sys.executable, viewer_path]
 
         self.temp_fn = os.path.join(self.root, self._temp_file)
         self.view, self.viewing = view, False
@@ -730,7 +731,6 @@ class HoppingAnimator(QGraphicsView):
     record_dir = os.path.join('.', '.temp_rec/')
 
     logging = True     # set True for LineView animation
-    log_dir = os.path.join('.', '.temp/')
 
     stopwatch_step = .25    # fraction of clock period to step for stopwatch
 
@@ -786,7 +786,8 @@ class HoppingAnimator(QGraphicsView):
         self.paused = False
         self.rtimes = [0,]*len(self.timers)
 
-        self.logger = Logger(self.log_dir) if self.logging else None
+        self.tmp_dir = tempfile.mkdtemp()
+        self.logger = Logger(self.tmp_dir) if self.logging else None
 
         self.panning = False
         self.panx, self.pany = 0., 0.
@@ -801,6 +802,7 @@ class HoppingAnimator(QGraphicsView):
         #super(HoppingAnimator, self).__del__()
         if self.logger:
             self.logger.cleanup()
+        shutil.rmtree(self.tmp_dir)
         self.model.cleanup()
 
     def start(self):
@@ -1628,7 +1630,9 @@ class MainWindow(QMainWindow):
         self.dock.addWidget(self.ltime)
 
         self.ecount = QLabel()
+        self.energy = QLabel()
         self.dock.addWidget(self.ecount)
+        self.dock.addWidget(self.energy)
 
         self.fpstrack = QLabel()
         self.dock.addWidget(self.fpstrack)
@@ -1692,6 +1696,7 @@ class MainWindow(QMainWindow):
     def tickSlot(self):
 
         # count electrons
+        self.energy.setText('Energy: {0:.3f}'.format(self.model.energy))
         self.ecount.setText('Number of Electrons: {0}'.format(self.model.Nel))
 
         # display fps load
@@ -1747,6 +1752,7 @@ class MainWindow(QMainWindow):
         key_check = lambda s: self.key_check(ekey, self.key_map[s])
 
         if key_check('quit'):
+            print('Quitting')
             self.quit()
         elif key_check('options'):
             self.toggleOptions()
