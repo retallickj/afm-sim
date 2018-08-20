@@ -7,7 +7,7 @@ Model for computing the influence of the AFM tip on the DBs
 '''
 
 __author__      = 'Jake Retallick, Lucian Livadaru'
-__copyright__   = 'MIT License'
+__copyright__   = 'ApacheLicense 2.0'
 __version__     = '1.1'
 __date__        = '2018-03-09'  # last update
 

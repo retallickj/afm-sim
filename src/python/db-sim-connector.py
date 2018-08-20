@@ -7,7 +7,7 @@ runs the simulation with the desired parameters
 '''
 
 __author__      = 'Samuel Ng'
-__copyright__   = 'MIT License'
+__copyright__   = 'ApacheLicense 2.0'
 __version__     = '0.2'
 __date__        = '2018-06-02'  # last update
 

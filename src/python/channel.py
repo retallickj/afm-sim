@@ -6,7 +6,7 @@ Channels for charges hopping on and off the surface
 '''
 
 __author__      = 'Jake Retallick'
-__copyright__   = 'MIT License'
+__copyright__   = 'ApacheLicense 2.0'
 __version__     = '1.2'
 __date__        = '2018-02-16'  # last update
 

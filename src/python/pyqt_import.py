@@ -6,7 +6,7 @@ Handler for standardized PyQt4/PyQt5 module importing
 '''
 
 __author__      = 'Jake Retallick'
-__copyright__   = 'MIT License'
+__copyright__   = 'ApacheLicense 2.0'
 __version__     = '1.2'
 __date__        = '2018-05-07'
 
