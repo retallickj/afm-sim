@@ -3,7 +3,7 @@
 
 
 __author__      = 'Jake Retallick'
-__copyright__   = 'ApacheLicense 2.0'
+__copyright__   = 'Apache License 2.0'
 __version__     = '1.1'
 __data__        = '2018-03-19'
 

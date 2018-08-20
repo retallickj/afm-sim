@@ -9,7 +9,7 @@ arrangements
 from __future__ import print_function
 
 __author__      = 'Jake Retallick'
-__copyright__   = 'ApacheLicense 2.0'
+__copyright__   = 'Apache License 2.0'
 __version__     = '1.2'
 __date__        = '2018-04-10'  # last update
 
