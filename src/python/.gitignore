@@ -1,9 +1,0 @@
-*.pyc
-*.pdf
-.*.swp
-siqadconn.py
-*.so
-*.pyd
-sim_problem.xml
-results.xml
-test.xml
