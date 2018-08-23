@@ -6,7 +6,7 @@ Real-time animation of DB arrangements
 '''
 
 __author__      = 'Jake Retallick'
-__copyright__   = 'Apache License 2.0'
+__copyright__   = 'GNU General Public License v3'
 __version__     = '1.2'
 __date__        = '2018-03-26'  # last update
 
