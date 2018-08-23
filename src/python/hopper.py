@@ -19,8 +19,6 @@ from scipy.special import erf
 
 from model import models as Models
 from channel import Channel, channels as Channels
-from tip_model import TipModel
-from clocking import Clock
 
 from itertools import combinations, chain, product
 from collections import defaultdict
@@ -29,9 +27,19 @@ import sys, os
 
 from timeit import default_timer as timer
 
-# add non-standard channels
-Channels['tip'] = TipModel
-Channels['clock'] = Clock
+# non standard channels
+try:
+    from tip_model import TipModel
+    Channels['tip'] = TipModel
+except ImportError:
+    pass
+
+try:
+    from clocking import Clock
+    Channels['clock'] = Clock
+except ImportError:
+    pass
+
 
 class HoppingModel:
     '''Time dependent surface hopping model for charge transfer in DBs'''
@@ -70,7 +78,7 @@ class HoppingModel:
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
 
-    debye_factor = lambda self, R: np.exp(-R/self.debye)
+    #debye_factor = lambda self, R: np.exp(-R/self.debye)
     debye_factor = lambda self, R: erf(R/self.erfdb)*np.exp(-R/self.debye)
 
     coulomb = lambda self, R: (self.Kc/R)*self.debye_factor(R)
@@ -189,8 +197,9 @@ class HoppingModel:
 
         if isinstance(channel, str):
             if channel not in Channels:
-                raise KeyError('Invalid channel type. Choose from [{0}]'.format(
-                    ', '.join(k for k in Channels if k != 'base')))
+                return None
+                # raise KeyError('Invalid channel type. Choose from [{0}]'.format(
+                #     ', '.join(k for k in Channels if k != 'base')))
             self.channels.append(Channels[channel]())
         elif isinstance(channel, Channel):
             self.channels.append(channel)
