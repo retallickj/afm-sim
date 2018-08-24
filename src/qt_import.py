@@ -2,7 +2,7 @@
 # ecnoding: utf-8
 
 '''
-Handler for standardized PyQt4/PyQt5 module importing
+Handler for standardized Qt4/Qt5 module importing
 '''
 
 __author__      = 'Jake Retallick'
@@ -12,43 +12,45 @@ __date__        = '2018-05-07'
 
 from importlib import import_module
 
-_pyqt_mods = ['PyQt5', 'PyQt4']
+#_qt_mods = ['PySide', 'PySide2', 'PyQt5', 'PyQt4']
+_qt_mods = ['PySide', 'PySide2']
 
 maps = {}
-maps['PyQt4'] = {'QtWidgets': 'QtGui', 'QtPrintSupport': 'QtGui'}
-maps['PyQt5'] = {}
+maps['PySide'] = {'QtWidgets': 'QtGui', 'QtPrintSupport': 'QtGui'}
+maps['PySide2'] = {}
+#maps['PyQt4'], maps['PyQt5'] = maps['PySide'], maps['PySide2']
 
 def _remap(submod):
-    mp = maps[pyqt]
+    mp = maps[qt]
     return mp[submod] if submod in mp else submod
 
-def _get_pyqt():
-    '''Returns the latest PyQtX module'''
+def _get_qt():
+    '''Returns the latest QtX module'''
 
-    for m in _pyqt_mods:
+    for m in _qt_mods:
         try:
             import_module(m)
         except ImportError:
             continue
         break
     else:
-        print('One of [{0}] must be installed'.format(' '.join(_pyqt_mods)))
+        print('One of [{0}] must be installed'.format(' '.join(_qt_mods)))
         m = None
 
     return m
 
-def import_pyqt_attr(submod, attr):
-    '''Return a reference to the given attribute of PyQtX.submod
+def import_qt_attr(submod, attr):
+    '''Return a reference to the given attribute of QtX.submod
 
     usage:
-        QSvgGenerator = import_pyqt_attr('QtSvg', 'QSvgGenerator')
+        QSvgGenerator = import_qt_attr('QtSvg', 'QSvgGenerator')
     '''
 
-    if pyqt is None:
+    if qt is None:
         return None
 
     try:
-        sm = import_module('{0}.{1}'.format(pyqt, _remap(submod)))
+        sm = import_module('{0}.{1}'.format(qt, _remap(submod)))
         return getattr(sm, attr)
     except ImportError:
         print('Failed to load submodule: {0}'.format(submod))
@@ -58,33 +60,33 @@ def import_pyqt_attr(submod, attr):
     return None
 
 
-def import_pyqt_mod(*submods, **kwargs):
-    '''Returns a list of the request submodule for PyQtX for your latest
-    local version of PyQt. Input should either be a list of submodule names or
+def import_qt_mod(*submods, **kwargs):
+    '''Returns a list of the request submodule for QtX for your latest
+    local version of Qt. Input should either be a list of submodule names or
     a position based set of *args. Missing/invalid submodules will return None
     at that sire in the list.
 
     usage:
-        QtGui, QtCore = import_pyqt_mod('QtGui', 'QtCore')
-        QtGui, QtCore, QtSvg = import_pyqt_mod(['QtGui', 'QtCore', 'QtSvg'])
+        QtGui, QtCore = import_qt_mod('QtGui', 'QtCore')
+        QtGui, QtCore, QtSvg = import_qt_mod(['QtGui', 'QtCore', 'QtSvg'])
 
     wildcard usage:
-        import_pyqt_mod('QtGui', 'QtCore', wc=globals()) is equivalent to
-        from PyQtX.QtGui import *
-        from PyQtX.QtCore import *
+        import_qt_mod('QtGui', 'QtCore', wc=globals()) is equivalent to
+        from QtX.QtGui import *
+        from QtX.QtCore import *
     '''
 
     if len(submods)==1 and isinstance(submods[0], list):
         submods = submods[0]
 
-    if pyqt is None:
+    if qt is None:
         return [None for _ in submods]
 
     # load all submodules
     out = []
     for submod in submods:
         try:
-            sm = import_module('{0}.{1}'.format(pyqt, _remap(submod)))
+            sm = import_module('{0}.{1}'.format(qt, _remap(submod)))
             if 'wc' in kwargs and kwargs['wc'] is not None:
                 for k, v in sm.__dict__.items():
                     if isinstance(k, str) and not k.startswith('_'):
@@ -96,4 +98,4 @@ def import_pyqt_mod(*submods, **kwargs):
 
     return out[0] if len(out)==1 else out
 
-pyqt = _get_pyqt()
+qt = _get_qt()

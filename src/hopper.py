@@ -137,8 +137,7 @@ class HoppingModel:
 
     def cleanup(self):
         print('Closing Hopping Model')
-        if self.fplog is not None:
-            self.fplog.close()
+        self.endLog()
 
     def fixElectronCount(self, n):
         '''Fix the number of electrons in the system. Use n<0 to re-enable

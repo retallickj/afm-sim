@@ -17,14 +17,14 @@ import json
 from subprocess import Popen
 import tempfile
 
-from pyqt_import import pyqt, import_pyqt_mod, import_pyqt_attr
+from qt_import import qt, import_qt_mod, import_qt_attr
 
-import_pyqt_mod('QtCore', 'QtGui', 'QtWidgets', wc=globals())
+import_qt_mod('QtCore', 'QtGui', 'QtWidgets', wc=globals())
 
 # vector printing methods
-QSvgGenerator = import_pyqt_attr('QtSvg', 'QSvgGenerator')
-if pyqt == 'PyQt5':
-    QPrinter = import_pyqt_attr('QtPrintSupport', 'QPrinter')
+QSvgGenerator = import_qt_attr('QtSvg', 'QSvgGenerator')
+if qt in ['PySide2', 'PyQt5']:
+    QPrinter = import_qt_attr('QtPrintSupport', 'QPrinter')
 
 from hopper import HoppingModel
 
@@ -90,9 +90,13 @@ class Logger(object):
         # close the Viewer process if open
         if self.P is not None:
             self.P.terminate()
+            self.P = None
 
     def log(self, data):
         '''Log the given dictionary to the next file'''
+
+        if not os.path.isdir(self.root):
+            return
 
         with open(self.temp_fn, 'w') as fp:
             json.dump(data, fp, indent=1)
@@ -114,7 +118,7 @@ class Logger(object):
     def startViewer(self):
         ''' '''
         print('Starting Viewer')
-        self.cleanup(silent=False)
+        self.cleanup(silent=True)
         self.viewing = True
         self.view_fp = open(os.path.join(self.root, 'stdout'), 'a')
         self.P = Popen(self.viewer+[self.log_fn,],
@@ -494,7 +498,8 @@ class FieldToggle(QCheckBox):
 class PanelTag(QLabel):
 
     hmin = 30
-    signal_click = pyqtSignal()
+    #signal_click = pyqtSignal()
+    signal_click = Signal()
 
     css = { 'enter': 'gray',
             'leave': 'lightgray'}
@@ -737,8 +742,11 @@ class HoppingAnimator(QGraphicsView):
     zoom_rate = .1
     zoom_bounds = [.01, 5.]
 
-    signal_tick = pyqtSignal()
-    signal_dbtrack = pyqtSignal(int)
+    # signal_tick = pyqtSignal()
+    # signal_dbtrack = pyqtSignal(int)
+
+    signal_tick = Signal()
+    signal_dbtrack = Signal(int)
 
     def __init__(self, model, record=False, fps=30):
         '''Initialise the HoppingAnimator instance for the given DB positions.
@@ -804,6 +812,8 @@ class HoppingAnimator(QGraphicsView):
             self.logger.cleanup()
         shutil.rmtree(self.tmp_dir)
         self.model.cleanup()
+        for thread in self.threads:
+            thread.quit()
 
     def start(self):
         for thread in self.threads:
@@ -1530,8 +1540,8 @@ class MainWindow(QMainWindow):
 
     use_svg = False  # use svg for vector graphics else pdf
 
-    # QPrinter setup currently not working in PyQt4, no .pdf support
-    if pyqt != 'PyQt5':
+    # QPrinter setup currently not working in Qt4, no .pdf support
+    if qt not in ['PySide2', 'PyQt5']:
         use_svg = True
 
     img_ext = { False: '.png',
@@ -1727,19 +1737,6 @@ class MainWindow(QMainWindow):
             self.beff.setText('DB-Beff: {0:.3f}'.format(self.model.beff[self.dbn]))
             self.ltime.setText('Lifetime: {0:.3f}'.format(
                                     self.model.lifetimes[self.dbn]))
-
-    # def debug(self):
-    #
-    #     from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
-    #     import pdb, sys
-    #     pyqtRemoveInputHook()
-    #     try:
-    #         dbg = pdb.Pdb()
-    #         dbg.reset()
-    #         dbg.do_next(None)
-    #         dbg.interaction(sys._getframe().f_back, None)
-    #     finally:
-    #         pyqtRestoreInputHook()
 
     def _screenshot(self, vector=False):
         fname = QDateTime.currentDateTime().toString('yyyyMMdd-hhmmss')
