@@ -15,16 +15,14 @@ from argparse import ArgumentParser
 import os.path
 import xml.etree.ElementTree as ET
 
-from PyQt5.QtCore import (Qt, QTimer, QThread)
-from PyQt5.QtGui import (QPen, QBrush, QColor, QPainter, QImage)
-from PyQt5.QtWidgets import (QApplication, QGraphicsView, QGraphicsScene,
-                             QGraphicsEllipseItem)
-
 import siqadconn
 
 from afm import AFMLine
 from animator import (HoppingAnimator, MainWindow)
 from hopper import HoppingModel
+
+from qt_import import qt, import_qt_mod, import_qt_attr
+import_qt_mod('QtCore', 'QtGui', 'QtWidgets', wc=globals())
 
 class DBSimConnector:
     '''This class serves as a connector between the C++ physics engine connector and
