@@ -197,16 +197,16 @@ class ClockGradient(QLinearGradient):
 
 class DB(QGraphicsEllipseItem):
 
-    D = 1.8*_SF              # dot diameter
+    D = 5*_SF              # dot diameter
 
     normal = {
      # DB edge pens
-     'pen':     QPen(QColor("white"), .2*_SF),   # DB edge pen
+     'pen':     QPen(QColor("black"), .2*_SF),   # DB edge pen
      'bgpen':   QPen(QColor(255,255,255,50), .2*_SF, Qt.DotLine),
 
      # fill color
      'pfill':   QBrush(QColor("orange")),   # fixed perturber fill
-     'fill':    QBrush(Qt.green),           # charged DB fill
+     'fill':    QBrush(Qt.red),           # charged DB fill
      'nofill':  QBrush(Qt.NoBrush),         # uncharged DB fill
 
      # diameters
@@ -732,7 +732,7 @@ class HoppingAnimator(QGraphicsView):
 
     xpad, ypad = 8, 4
 
-    bgcol = QColor(29, 35, 56)  # background color
+    bgcol = QColor(255, 255, 255)  # background color
     record_dir = os.path.join('.', '.temp_rec/')
 
     logging = True     # set True for LineView animation
