@@ -3,8 +3,8 @@
     <name>HoppingDynamics Animator</name>
     <version>0.1</version>
     <interpreter>python</interpreter> <!-- used for calling a script with python, java, etc. Leave blank otherwise -->
-    <bin_path>db-sim-connector.py</bin_path> <!-- path to binary (standalone) or script (read by interpreter), relative to the directory containing this file -->
-    <gui_dialog_path>hopping_animator.ui</gui_dialog_path>
+    <bin_path>db-sim-connector.py</bin_path> <!-- path to binary (standalone) or script (read by interpreter), relative to the directory containing this physeng file -->
+    <dep_path>requirements.txt</dep_path> <!-- Python dependencies file path, relative to the directory containing this physeng file. -->
     <sim_params preserve_order="true">
       <simulation_type>
         <T>string</T>
