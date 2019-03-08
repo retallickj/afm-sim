@@ -97,8 +97,8 @@ class DBSimConnector:
         model.fixElectronCount(int(self.sqconn.getParameter('num_electrons')))
 
         model.addChannel('bulk')
-        model.addChannel('clock', enable=False)
-        model.addChannel('tip', enable=False)
+        model.addChannel('clock', enable=False, fname=None)
+        #model.addChannel('tip', enable=False)
 
         app = QApplication(sys.argv)
         mw = MainWindow(model)

@@ -406,13 +406,14 @@ class Tip(QGraphicsEllipseItem):
 class FieldSlider(QHBoxLayout):
     '''Container for parameter selected by a QSlider'''
 
-    def __init__(self, txt, parent=None):
+    def __init__(self, txt, parent=None, exp=False):
         super(FieldSlider, self).__init__(parent)
 
         self.txt = QLabel(txt)
         self.out = QLabel()
         self.fval = lambda n: n
         self.func = lambda x: None
+        self.exp = exp
 
         self.initGUI()
 
@@ -451,7 +452,10 @@ class FieldSlider(QHBoxLayout):
         self.txt.setToolTip(txt)
 
     def echoVal(self, val):
-        self.out.setText('{0:.3f}'.format(val))
+        if not self.exp:
+            self.out.setText('{0:.3f}'.format(val))
+        else:
+            self.out.setText('{0:.1e}'.format(10**val))
 
     # event handling
     def valueChanged(self):
@@ -632,19 +636,20 @@ class DockWidget(QDockWidget):
         label = QLabel(txt)
         self.target.addWidget(label)
 
-    def addSlider(self, key, txt, lo, hi, inc, val, func, ttip=''):
+    def addSlider(self, key, txt, lo, hi, inc, val, func, ttip='', exp=False):
         '''Add a slider controlled parameter to the Dock Widget
 
         inputs:
-            key     : key for parametre in the local cache
+            key     : key for parameter in the local cache
             txt     : Label of the slider
             lo      : Lowest value of the slider
             hi      : Highest value of the slider
             inc     : Increment between slider ticks
             func    : When slider is updated to x, func(x) called
+            exp     : Flag to indicate slider represents a logarithmic value
         '''
 
-        slider = FieldSlider(txt)
+        slider = FieldSlider(txt, exp=exp)
         slider.setBounds(lo, hi, inc, val)
         slider.setToolTip(ttip)
         slider.func = func
@@ -875,7 +880,7 @@ class HoppingAnimator(QGraphicsView):
         val = np.log10(self.rate)
         func = lambda v: self.setPar(self, 'rate', 10**v, tc=2)
         dock.addSlider('rate', 'log(rate)', -3., 3., .5, val, func,
-            'Speed-up factor for the animation.')
+            'Speed-up factor for the animation.', exp=True)
 
         # hopping controls
         dock.addPanel('hopper', 'Hopping Model:')
@@ -895,10 +900,10 @@ class HoppingAnimator(QGraphicsView):
         dock.addSlider('lambda', 'lambda', 0, 0.2, .001, val, func,
             'Self Trapping Energy')
 
-        val = np.log(mdl.fact)
+        val = np.log10(mdl.fact)
         func = lambda v: self.setParFunc(mdl.setPrefactor, 10**v)
         dock.addSlider('factor', 'factor', -2, 2, .1, val, func,
-            'Order scaling for the intrinsic hopping rates')
+            'Order scaling for the intrinsic hopping rates', exp=True)
 
         val = mdl.hop_alph
         func = lambda v: self.setParFunc(mdl.setAttenuation, v)
@@ -935,7 +940,8 @@ class HoppingAnimator(QGraphicsView):
             val = np.log10(self.bulk.nu)
             func = lambda v: self.setPar(self.bulk, 'nu', 10**v)
             dock.addSlider('nu', 'log(nu)', -1, 5, .5, val, func,
-                'Maximum hopping rate between the bulk and the surface')
+                'Maximum hopping rate between the bulk and the surface',
+                exp=True)
 
         # tip controls
         if self.tip is not None:
@@ -1035,19 +1041,20 @@ class HoppingAnimator(QGraphicsView):
             dock.addToggle('Flat Clock', False, func,
                 'Toggle flat clocking field')
 
-            val = np.log10(self.clock.length)-1
+            val = np.log10(self.clock.length)-1     # angstrom/nm conversion
             func = lambda v: self.setPar(self.clock, 'length', 10**(v+1))
             dock.addSlider('length', 'log(length)', 0, 3, .1, val, func,
-                'Wavelength, in nm')
+                'Wavelength, in nm', exp=True)
 
             val = np.log10(self.clock.freq)
             func = lambda v: self.setPar(self.clock, 'freq', 10**v)
-            dock.addSlider('freq', 'Frequency', -2, 3, .1, val, func,
-                'Frequency, in Hz')
+            dock.addSlider('freq', 'Frequency', -2, 0, .1, val, func,
+                'Frequency, in Hz', exp=True)
 
-            val, func = self.clock.wf_A, lambda v: self.setPar(self.clock, 'wf_A', v)
-            dock.addSlider('amp', 'Amplitude', 0, .5, .01, val, func,
-                'Amplitude, in eV')
+            val = np.log10(self.clock.wf_A)
+            func = lambda v: self.setPar(self.clock, 'wf_A', 10**v)
+            dock.addSlider('amp', 'Amplitude', -1, 1., .01, val, func,
+                'Amplitude Multiplier', exp=True)
 
             val, func = self.clock.wf_0, lambda v: self.setPar(self.clock, 'wf_0', v)
             dock.addSlider('offset', 'Offset', -.2, .2, .01, val, func,

@@ -34,10 +34,12 @@ try:
 except ImportError:
     pass
 
+from clocking import Clock
 try:
     from clocking import Clock
     Channels['clock'] = Clock
 except ImportError:
+    print('Failed to load in Clock')
     pass
 
 
@@ -183,13 +185,17 @@ class HoppingModel:
 
 
 
-    def addChannel(self, channel, enable=True):
+    def addChannel(self, channel, enable=True, *args, **kwargs):
         '''Add a Channel instance to the HoppingModel.
 
         inputs:
             channel : Channel to include. Must either be a Channel instance or
                      a string indicating an accepted channel type in Channels.
             enable  : Enable the channel immediately
+
+            args/kwargs: any addition position or key-val based parameters 
+                are passed directly to the Channel constructor if channel is a 
+                recognized Channel name.
         return:
             handle for the added Channel
         '''
@@ -197,9 +203,7 @@ class HoppingModel:
         if isinstance(channel, str):
             if channel not in Channels:
                 return None
-                # raise KeyError('Invalid channel type. Choose from [{0}]'.format(
-                #     ', '.join(k for k in Channels if k != 'base')))
-            self.channels.append(Channels[channel]())
+            self.channels.append(Channels[channel](*args, **kwargs))
         elif isinstance(channel, Channel):
             self.channels.append(channel)
         else:
