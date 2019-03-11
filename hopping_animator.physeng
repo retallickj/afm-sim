@@ -27,7 +27,7 @@ These replacements are done on the following fields:
         <!-- Default command. -->
         <command label="Default">@INTERP@ @BINPATH@ @PROBLEMPATH@ @RESULTPATH@</command>
         <!-- Take potential output from PoisSolver. -->
-        <command label="JSON from PoisSolver">@INTERP@ @BINPATH@ @PROBLEMPATH@ @RESULTPATH@ --pot-path @JOBTMP@/db_pots.json</command>
+        <command label="JSON from PoisSolver">@INTERP@ @BINPATH@ @PROBLEMPATH@ @RESULTPATH@ --pot-json-import-path @JOBTMP@/db_pots.json</command>
     </commands>
     <dep_path>requirements.txt</dep_path> <!-- Python dependencies file path, relative to the directory containing this physeng file. -->
     <sim_params preserve_order="true">
