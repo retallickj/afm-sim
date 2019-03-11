@@ -1,9 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
+<!-- 
+Available path/command replacements:
+    @INTERP@        : Interpreter command/path (cannot be used in the interpreter field).
+    @PYTHON@        : Use a Python interpreter command/path provided by SiQAD (either from the default settings or the user's overriden choice).
+    @BINPATH@       : Path to the binary or script path to the engine (cannot be used in the bin_path field).
+    @PHYSENGPATH@   : Path to the directory containing this *.physeng file.
+    @PROBLEMPATH@   : Path to the problem file describing the simulation problem and parameters.
+    @RESULTPATH@    : Path to the result file that will be read by SiQAD after the simulation is complete.
+    @JOBTMP@        : Temporary path for this simulation job to store generated files.
+
+These replacements are done on the following fields:
+    interpreter, bin_path, command
+-->
+
 <physeng>
-    <name>HoppingDynamics Animator</name>
+    <name>HoppingDynamics</name>
     <version>0.1</version>
-    <interpreter>python</interpreter> <!-- used for calling a script with python, java, etc. Leave blank otherwise -->
-    <bin_path>db-sim-connector.py</bin_path> <!-- path to binary (standalone) or script (read by interpreter), relative to the directory containing this physeng file -->
+    <!-- Interpreter field used for calling a script with python, java, etc. SiQAD attempts to find an interpreter suitable for running the command. Leave blank if this is a compiled binary which does not need an interpreter. -->
+    <interpreter>@PYTHON@</interpreter>
+    <!-- Path to the engine script or compiled binary. -->
+    <!--<bin_path>@PHYSENGPATH@/db-sim-connector.py</bin_path> TODO switch to this form later-->
+    <bin_path>db-sim-connector.py</bin_path>
+    <!-- Selection of invocation commands to call this engine. The first one is the one that is shown in SiQAD by default. TODO tie this to presets in some ways. -->
+    <commands>
+        <!-- Default command. -->
+        <command label="Default">@INTERP@ @BINPATH@ @PROBLEMPATH@ @RESULTPATH@</command>
+        <!-- Take potential output from PoisSolver. -->
+        <command label="JSON from PoisSolver">@INTERP@ @BINPATH@ @PROBLEMPATH@ @RESULTPATH@ --pot-path @JOBTMP@/db_pots.json</command>
+    </commands>
     <dep_path>requirements.txt</dep_path> <!-- Python dependencies file path, relative to the directory containing this physeng file. -->
     <sim_params preserve_order="true">
       <simulation_type>
