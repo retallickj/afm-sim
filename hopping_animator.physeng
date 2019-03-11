@@ -25,11 +25,25 @@ These replacements are done on the following fields:
     <!-- Selection of invocation commands to call this engine. The first one is the one that is shown in SiQAD by default. TODO tie this to presets in some ways. -->
     <commands>
         <!-- Default command. -->
-        <command label="Default">@INTERP@ @BINPATH@ @PROBLEMPATH@ @RESULTPATH@</command>
+        <command label="Default">
+            <program>@INTERP@</program>
+            <arg>@BINPATH@</arg>
+            <arg>@PROBLEMPATH@</arg>
+            <arg>@RESULTPATH@</arg>
+        </command>
         <!-- Take potential output from PoisSolver. -->
-        <command label="JSON from PoisSolver">@INTERP@ @BINPATH@ @PROBLEMPATH@ @RESULTPATH@ --pot-json-import-path @JOBTMP@/db_pots.json</command>
+        <command label="JSON from PoisSolver">
+            <program>@INTERP@</program>
+            <arg>@BINPATH@</arg>
+            <arg>@PROBLEMPATH@</arg>
+            <arg>@RESULTPATH@</arg>
+            <arg>--pot-json-import-path</arg>
+            <arg>@JOBTMP@/db_pots.json</arg>
+        </command>
     </commands>
-    <dep_path>requirements.txt</dep_path> <!-- Python dependencies file path, relative to the directory containing this physeng file. -->
+    <!-- Python dependencies file path, relative to the directory containing this physeng file. -->
+    <dep_path>requirements.txt</dep_path> 
+    <!-- Simulation parameters, read into SiQAD as a property map. -->
     <sim_params preserve_order="true">
       <simulation_type>
         <T>string</T>
