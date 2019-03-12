@@ -17,8 +17,6 @@ These replacements are done on the following fields:
 <physeng>
     <name>HoppingDynamics</name>
     <version>0.1</version>
-    <!-- Interpreter field used for calling a script with python, java, etc. SiQAD attempts to find an interpreter suitable for running the command. Leave blank if this is a compiled binary which does not need an interpreter. -->
-    <interpreter>@PYTHON@</interpreter>
     <!-- Path to the engine script or compiled binary. -->
     <!--<bin_path>@PHYSENGPATH@/db-sim-connector.py</bin_path> TODO switch to this form later-->
     <bin_path>db-sim-connector.py</bin_path>
@@ -26,14 +24,14 @@ These replacements are done on the following fields:
     <commands>
         <!-- Default command. -->
         <command label="Default">
-            <program>@INTERP@</program>
+            <program>@PYTHON@</program>
             <arg>@BINPATH@</arg>
             <arg>@PROBLEMPATH@</arg>
             <arg>@RESULTPATH@</arg>
         </command>
         <!-- Take potential output from PoisSolver. -->
         <command label="JSON from PoisSolver">
-            <program>@INTERP@</program>
+            <program>@PYTHON@</program>
             <arg>@BINPATH@</arg>
             <arg>@PROBLEMPATH@</arg>
             <arg>@RESULTPATH@</arg>
