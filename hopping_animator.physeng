@@ -17,6 +17,8 @@ These replacements are done on the following fields:
 <physeng>
     <name>HoppingDynamics</name>
     <version>0.1</version>
+    <!-- Services this plugin provides, used by SimManager and DesignAssistant classes to identify the type of simulation or assistance this plugin can provide. Comma separated, spaces are neither ignored nor truncated. -->
+    <services>ElectronDynamics</services>
     <!-- Path to the engine script or compiled binary. -->
     <!--<bin_path>@PHYSENGPATH@/db-sim-connector.py</bin_path> TODO switch to this form later-->
     <bin_path>db-sim-connector.py</bin_path>
