@@ -43,15 +43,6 @@ These replacements are done on the following fields:
     <dep_path>requirements.txt</dep_path> 
     <!-- Simulation parameters, read into SiQAD as a property map. -->
     <sim_params preserve_order="true">
-      <simulation_type>
-        <T>string</T>
-        <val>animation</val>
-        <label>Simulation Type</label>
-        <tip>The type of simulation to run. TODO just get rid of this option...</tip>
-        <value_selection type="ComboBox">
-          <animation>Animation</animation>
-        </value_selection>
-      </simulation_type>
       <hopping_model>
         <T>string</T>
         <val>marcus</val>

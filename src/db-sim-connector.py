@@ -13,7 +13,6 @@ __date__        = '2018-06-02'  # last update
 
 from argparse import ArgumentParser
 import os.path
-import xml.etree.ElementTree as ET
 
 import siqadconn
 
