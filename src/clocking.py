@@ -81,6 +81,7 @@ class Clock(Channel):
     # internal methods
 
     def _prepareFields(self):
+        import json
         '''Precompute generator for time dependent fields'''
 
         if self.fname is None:
