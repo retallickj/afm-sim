@@ -13,7 +13,7 @@ __date__        = '2018-05-07'
 from importlib import import_module
 
 #_qt_mods = ['PySide', 'PySide2', 'PyQt5', 'PyQt4']
-_qt_mods = ['PySide', 'PySide2']
+_qt_mods = ['PySide2']
 
 maps = {}
 maps['PySide'] = {'QtWidgets': 'QtGui', 'QtPrintSupport': 'QtGui'}
