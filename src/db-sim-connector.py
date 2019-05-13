@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 
 import siqadconn
 
-from afm import AFMLine
+#from afm import AFMLine
 from animator import (HoppingAnimator, MainWindow)
 from hopper import HoppingModel
 
@@ -32,23 +32,26 @@ class DBSimConnector:
     afmnodes = []   # list of tuples containing all afmnodes, (x, y, z)
 
     def parseCmlArguments(self):
+        '''Parse command line arguments.'''
+
+        def fileMustExist(fpath):
+            '''Check if input file exists for argument parser'''
+            if not os.path.exists(fpath):
+                raise argparse.ArgumentTypeError("{0} does not exist".format(fpath))
+            return fpath
+
         parser = ArgumentParser(description="This script takes the problem file "
                 "and runs the AFM tip simulation with the AFM path and DB locations "
                 "given in that file.")
-        #parser.add_argument("-i", "--input", dest="in_file", required=True,
-        parser.add_argument(dest="in_file", type=self.fileMustExist,
+        parser.add_argument(dest="in_file", type=fileMustExist,
                 help="Path to the problem file.",
                 metavar="IN_FILE")
-        #parser.add_argument("-o", "--output", dest="out_file", required=True,
         parser.add_argument(dest="out_file", help="Path to the output file.",
                 metavar="OUT_FILE")
+        parser.add_argument("--pot-json-import-path", dest="json_import_path",
+                help="Path to the JSON DB potentials file.", 
+                metavar="JSON_IMPORT_PATH")
         self.args = parser.parse_args()
-
-    def fileMustExist(self, fpath):
-        '''Check if input file exists for argument parser'''
-        if not os.path.exists(fpath):
-            raise argparse.ArgumentTypeError("{0} does not exist".format(fpath))
-        return fpath
 
 
     # Import problem parameters and design from SiQAD Connector
@@ -80,15 +83,15 @@ class DBSimConnector:
         print(X)
 
         # call the AFM simulation
-        self.afm = AFMLine(X)
-        self.afm.setScanType(int(self.sqconn.getParameter('scan_type')),
-                float(self.sqconn.getParameter('write_strength')))
-        self.afm.setBias(float(self.sqconn.getParameter('bias')))
-        self.afm.run(Nel=int(self.sqconn.getParameter('num_electrons')),
-                nscans=int(self.sqconn.getParameter('num_scans')),
-                pad=[int(self.sqconn.getParameter('lattice_padding_l')),
-                    int(self.sqconn.getParameter('lattice_padding_r'))]
-                )
+        #self.afm = AFMLine(X)
+        #self.afm.setScanType(int(self.sqconn.getParameter('scan_type')),
+        #        float(self.sqconn.getParameter('write_strength')))
+        #self.afm.setBias(float(self.sqconn.getParameter('bias')))
+        #self.afm.run(Nel=int(self.sqconn.getParameter('num_electrons')),
+        #        nscans=int(self.sqconn.getParameter('num_scans')),
+        #        pad=[int(self.sqconn.getParameter('lattice_padding_l')),
+        #            int(self.sqconn.getParameter('lattice_padding_r'))]
+        #        )
 
     def runAnimation(self):
         import sys
@@ -97,7 +100,7 @@ class DBSimConnector:
         model.fixElectronCount(int(self.sqconn.getParameter('num_electrons')))
 
         model.addChannel('bulk')
-        model.addChannel('clock', enable=False, fname=None)
+        model.addChannel('clock', enable=False, fname=self.args.json_import_path)
         #model.addChannel('tip', enable=False)
 
         app = QApplication(sys.argv)
