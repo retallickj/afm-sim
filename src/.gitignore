@@ -9,3 +9,6 @@ tip_model.py
 sim_problem.xml
 results.xml
 test.xml
+build/
+bin/
+python/
