@@ -81,8 +81,8 @@ class Clock(Channel):
     # internal methods
 
     def _prepareFields(self):
-        import json
         '''Precompute generator for time dependent fields'''
+        import json
 
         if self.fname is None:
             return lambda phase: self.waveform(self.X, phase)
@@ -95,10 +95,14 @@ class Clock(Channel):
         if 'phases' in data:
             phases = np.array(data['phases']).reshape(-1,)
         else:
-            phases = np.linspace(0,2*np.pi, len(data['pots']))
+            phases = np.linspace(0, 2*np.pi, len(data['pots']))
 
         pots = np.array(data['pots'])
-        return interp1d(phases, pots.T, kind='quadratic')
+        if len(pots)>1:
+            kind = 'quadratic' if len(pots)>2 else 'linear'
+            return interp1d(phases, pots.T, kind=kind)
+        else:
+            return lambda x: np.asarray(pots)
 
     def waveform(self, x, ph):
         '''Travelling wave approximation of clocking fields'''

@@ -69,7 +69,7 @@ class HoppingModel:
     # general settings
     fixed_pop = False    # fixed number of electrons
     free_rho = 0.5       # filling density if not fixed_pop (Nel = round(N*free_rho))
-    burn_count = 0      # number of burns hops per db
+    burn_count = 0       # number of burns hops per db
 
     enable_cohop = True     # enable cohopping
     enable_FRH = True       # enable finite range hopping
@@ -85,7 +85,7 @@ class HoppingModel:
 
     coulomb = lambda self, R: (self.Kc/R)*self.debye_factor(R)
 
-    def __init__(self, pos, model='marcus', **kwargs):
+    def __init__(self, pos, model='VRH', **kwargs):
         '''Construct a HoppingModel for a DB arrangement with the given x and
         optional y coordinates in unit of the lattice vectors. For now, assume
         only the top site of each dimer pair can be a DB.
