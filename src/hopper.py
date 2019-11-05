@@ -57,7 +57,7 @@ class HoppingModel:
     q0      = 1.602e-19     # C
     kb      = 8.617e-05     # eV/K
     T       = 4.0           # system temperature, K
-    epsr    = 5.6          # relative permittivity
+    epsr    = 5.6           # relative permittivity
 
     Kc = 1e10*q0/(4*np.pi*epsr*eps0)    # Coulomb strength, eV.angstrom
 
@@ -80,8 +80,11 @@ class HoppingModel:
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
 
-    #debye_factor = lambda self, R: np.exp(-R/self.debye)
-    debye_factor = lambda self, R: erf(R/self.erfdb)*np.exp(-R/self.debye)
+    use_erfdb = False   # include gaussian claud approximation
+    if use_erfdb:
+        debye_factor = lambda self, R: erf(R/self.erfdb)*np.exp(-R/self.debye)
+    else:
+        debye_factor = lambda self, R: np.exp(-R/self.debye)
 
     coulomb = lambda self, R: (self.Kc/R)*self.debye_factor(R)
 
@@ -183,8 +186,6 @@ class HoppingModel:
             self.ch_lifetimes = {ij: self.rebirth() for ij in self.ch_targets}
         self.update()
 
-
-
     def addChannel(self, channel, enable=True, *args, **kwargs):
         '''Add a Channel instance to the HoppingModel.
 
@@ -277,7 +278,6 @@ class HoppingModel:
 
         #t = tick()
 
-        # TODO: include channel contributions to beff
         # effective bias at each location
         beff = self.bias-np.dot(self.V, self.charge)
 

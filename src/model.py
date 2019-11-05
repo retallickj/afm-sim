@@ -25,9 +25,8 @@ class BaseModel(object):
     # calibration values
     nu0     = .02   # calibration pair hopping frequency, Hz
     r0      = 19.2  # calibration pair distance, angstroms
-    lamb    = 0.04  # reorganization energy, eV
 
-    dlamb   = 0.00  # offset for lamb to account for tip
+    Etrap   = 0.00  # self-trapping energy
     fact    = 1.0   # additional prefactor for hopping
 
     expmax = 1e2
@@ -49,11 +48,11 @@ class BaseModel(object):
         self.R = np.sqrt(dX**2+dY**2)
         self._spatial_rates()
 
-    def rate(self, dg, n, m):
+    def rate(self, dE, n, m):
         '''Compute the hopping rate from the energy delta, source, and target'''
-        return self._exp(self.T0[n,m] + self._energy_rate(dg+self.dlamb))
+        return self._exp(self.T0[n,m] + self._energy_rate(dE,self.Etrap))
 
-    def rates(self, dG, occ, nocc):
+    def rates(self, dE, occ, nocc):
         '''Compute the hopping rates from the energy deltas
 
         inputs:
@@ -62,9 +61,10 @@ class BaseModel(object):
             occ     : list of occupied sites, possible sources
             nocc    : list of unoccupied sites, possible targets
         '''
-        return self._exp(self.T0[occ,:][:,nocc] + self._energy_rate(dG+self.dlamb))
+        return self._exp(self.T0[occ,:][:,nocc] + \
+                self._energy_rate(dE,self.Etrap))
 
-    def cohopping_rate(self, dG, ij, kl):
+    def cohopping_rate(self, dE, ij, kl):
         '''Compute the cohopping rate from sites i,j to sites k,l with the given
         energy delta
 
@@ -74,7 +74,8 @@ class BaseModel(object):
             k,l : db targets
         '''
         (i,j), (k,l) = ij, kl
-        return self._exp(self._ch_spatial_rate(i,j,k,l) + self._energy_rate(dG+self.dlamb))
+        return self._exp(self._ch_spatial_rate(i,j,k,l) + \
+                self._energy_rate(dE,self.Etrap))
 
     def setAttenuation(self, alph):
         self.alph = alph
@@ -84,13 +85,10 @@ class BaseModel(object):
         self.fact = fact
         self._spatial_rates()
 
-    def setLambda(self, lamb):
-        self.lamb = lamb
-
     # internal methods
 
     # main function to reimplement in derived classes
-    def _energy_rate(self, dG):
+    def _energy_rate(self, dE, Etrap):
         return 0.
 
     def _spatial_rates(self):
@@ -124,13 +122,15 @@ class VRHModel(BaseModel):
     def setup(self, X, Y, kt):
         super(VRHModel, self).setup(X, Y, kt)
 
-    def _energy_rate(self, dG):
-        return -dG*self.beta
+    def _energy_rate(self, dE, Etrap):
+        return -dE*self.beta
 
 
 
 class MarcusModel(BaseModel):
     '''Marcus Theory model for hopping rates'''
+    
+    lamb    = 0.04  # reorganization energy, eV
 
     def __init__(self):
         super(MarcusModel, self).__init__()
@@ -142,11 +142,11 @@ class MarcusModel(BaseModel):
         self.setLambda(self.lamb)
 
     def setLambda(self, lamb):
-        super(MarcusModel,self).setLambda(lamb)
+        self.lamb = lamb
         self.lbeta = np.inf if lamb == 0 else .25*self.beta/lamb
 
-    def _energy_rate(self, dG):
-        return -dG*(dG+2*self.lamb)*self.lbeta
+    def _energy_rate(self, dE, Etrap):
+        return -dE*(dE+2*(Etrap+self.lamb))*self.lbeta
 
 
 models = {  'marcus':   MarcusModel,
