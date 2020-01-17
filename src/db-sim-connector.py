@@ -15,7 +15,7 @@ from argparse import ArgumentParser
 import os.path
 import xml.etree.ElementTree as ET
 
-import siqadconn
+from siqadtools import siqadconn
 
 #from afm import AFMLine
 from animator import (HoppingAnimator, MainWindow)
