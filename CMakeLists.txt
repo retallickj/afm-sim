@@ -28,5 +28,5 @@ install(FILES ${AFM_FILES} DESTINATION ${AFM_INSTALL_DIR})
 install(FILES src/stylesheets/animator.qss DESTINATION ${AFM_INSTALL_DIR}/stylesheets)
 
 if(COMMAND symlink_siqadtools AND NOT WIN32)
-    symlink_siqadtools(${AFM_INSTALL_DIR})
+    symlink_siqadtools("../.." ${AFM_INSTALL_DIR})
 endif()
