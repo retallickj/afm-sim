@@ -8,7 +8,9 @@ elseif(CMAKE_BUILD_TYPE MATCHES Release)
     set(AFM_INSTALL_DIR "release")
 else()
     set(AFM_INSTALL_DIR "debug")
-ENDIF()
+endif()
+
+set(AFM_SYMLINK_DIR ${AFM_INSTALL_DIR})
 
 set(AFM_FILES
     LICENSE
@@ -28,5 +30,8 @@ install(FILES ${AFM_FILES} DESTINATION ${AFM_INSTALL_DIR})
 install(FILES src/stylesheets/animator.qss DESTINATION ${AFM_INSTALL_DIR}/stylesheets)
 
 if(COMMAND symlink_siqadtools AND NOT WIN32)
-    symlink_siqadtools("../.." ${AFM_INSTALL_DIR})
+    if(DEFINED SYMLINK_INSTALL_PREFIX)
+        set(AFM_SYMLINK_DIR "${SYMLINK_INSTALL_PREFIX}/plugins/afmmarcus")
+    endif()
+    symlink_siqadtools("../.." ${AFM_SYMLINK_DIR})
 endif()
