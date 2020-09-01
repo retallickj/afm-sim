@@ -919,7 +919,7 @@ class HoppingAnimator(QGraphicsView):
         val = self.model.cohop_range
         func = lambda v: self.setParFunc(
             lambda x: self.model.updateFRHPars(None, x), v)
-        dock.addSlider('frh-cohop', 'FRH: cohop', 10, 50, 2, val, func,
+        dock.addSlider('frh-cohop', 'FRH: cohop', 10, 80, 2, val, func,
             'Maximum range between surface cohopping sources, in angstroms')
 
 
@@ -934,7 +934,7 @@ class HoppingAnimator(QGraphicsView):
             #     'Self-Trapping energy for surface-bulk hopping')
 
             val, func = self.bulk.mu, lambda v: self.setPar(self.bulk, 'mu', v)
-            dock.addSlider('mu', 'mu', 0., .5, .01, val, func,
+            dock.addSlider('mu', 'mu', 0., .5, .001, val, func,
                 'Chemical Potential: difference between Fermi and intrinsic DB- levels')
 
             val = np.log10(self.bulk.nu)
@@ -1053,7 +1053,7 @@ class HoppingAnimator(QGraphicsView):
 
             val = np.log10(self.clock.wf_A)
             func = lambda v: self.setPar(self.clock, 'wf_A', 10**v)
-            dock.addSlider('amp', 'Amplitude', -1, 1., .01, val, func,
+            dock.addSlider('amp', 'Amplitude', -3, 1., .01, val, func,
                 'Amplitude Multiplier', exp=True)
 
             val, func = self.clock.wf_0, lambda v: self.setPar(self.clock, 'wf_0', v)

@@ -74,8 +74,8 @@ class HoppingModel:
     enable_cohop = True     # enable cohopping
     enable_FRH = True       # enable finite range hopping
 
-    hop_range = 20      # maximum range for hopping, angstroms
-    cohop_range = 20    # coherance range for cohopping pairs, angstroms
+    hop_range = 50      # maximum range for hopping, angstroms
+    cohop_range = 50    # coherance range for cohopping pairs, angstroms
 
     # useful lambdas
     rebirth = np.random.exponential     # reset for hopping lifetimes
@@ -112,7 +112,9 @@ class HoppingModel:
         # distance matrix
         dX = self.a*(self.X-self.X.reshape(-1,1))
         dY = self.b*(self.Y-self.Y.reshape(-1,1))
-        self.R = np.sqrt(dX**2+dY**2)
+        self.R = np.sqrt(dX**2+dY**SiDB Implementations of QCA
+Haider et al. demonstrated a simple 4 SiDBs design which, when biased by two
+addition2)
 
         # prepare FRH parameters
         self._prepareFRH()
