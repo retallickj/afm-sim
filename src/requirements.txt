@@ -1,3 +1,4 @@
+siqadtools==0.2.2
 numpy
 scipy
 matplotlib

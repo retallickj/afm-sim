@@ -71,7 +71,7 @@ class Viewer:
         if not self.setup_check:
             self._setup(data)
 
-        lamb = 0. if 'lamb' not in data else data['lamb']
+        Etrap = 0. if 'Etrap' not in data else data['Etrap']
         mu = 0. if 'mu' not in data else data['mu']
 
         # update all the artist parameters
@@ -85,7 +85,7 @@ class Viewer:
                 db['tlvl'].set_data(self.dbx+x, -data['tbias'][str(n)]-mu)
             else:
                 db['tlvl'].set_visible(False)
-            db['dot'].center = (x, -b-(mu+lamb))
+            db['dot'].center = (x, -b-(mu+Etrap))
             db['dot'].set_visible(c==1)
 
         # update tip

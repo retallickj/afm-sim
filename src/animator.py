@@ -895,9 +895,9 @@ class HoppingAnimator(QGraphicsView):
 
         mdl = self.model.model
 
-        val = mdl.dlamb
-        func = lambda v: self.setPar(mdl, 'dlamb', v)
-        dock.addSlider('lambda', 'lambda', 0, 0.2, .001, val, func,
+        val = mdl.Etrap
+        func = lambda v: self.setPar(mdl, 'Etrap', v)
+        dock.addSlider('Etrap', 'trapping', 0.0, 0.2, .001, val, func,
             'Self Trapping Energy')
 
         val = np.log10(mdl.fact)
@@ -1380,7 +1380,7 @@ class HoppingAnimator(QGraphicsView):
                }
 
         if hasattr(self.model.model, 'lamb'):
-            out['lamb'] = self.model.model.dlamb
+            out['Etrap'] = self.model.model.Etrap
 
         if self.bulk is not None:
             out['mu'] = self.bulk.mu
@@ -1844,7 +1844,7 @@ if __name__ == '__main__':
     #       compile temp files into an animation ::'./rec.mp4'
     # model = HoppingModel(device, model='marcus', record=True)
 
-    model = HoppingModel(device, model='marcus')
+    model = HoppingModel(device, model='VRH')
     model.addChannel('bulk')
     model.addChannel('clock', enable=False)
     model.addChannel('tip', enable=False)
